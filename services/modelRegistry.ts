@@ -21,6 +21,7 @@ import {
 
 // localStorage 键名
 const STORAGE_KEY = 'meon_model_registry';
+const JIMENG_GLOBAL_CONFIG_KEY = 'meon_jimeng_global_config';
 
 // 规范化 URL（去尾部斜杠、转小写）用于去重
 const normalizeBaseUrl = (url: string): string => url.trim().replace(/\/+$/, '').toLowerCase();
@@ -452,12 +453,65 @@ export const toggleModelEnabled = (id: string, enabled: boolean): boolean => {
 // ============================================
 
 /**
+ * 即梦全局配置接口
+ */
+export interface JimengGlobalConfig {
+  baseUrl?: string;
+  sessionToken?: string;
+}
+
+/**
+ * 获取即梦全局配置
+ */
+export const getJimengGlobalConfig = (): JimengGlobalConfig => {
+  try {
+    const stored = localStorage.getItem(JIMENG_GLOBAL_CONFIG_KEY);
+    if (stored) {
+      return JSON.parse(stored) as JimengGlobalConfig;
+    }
+  } catch (e) {
+    console.error('读取即梦全局配置失败:', e);
+  }
+  return {};
+};
+
+/**
+ * 设置即梦全局配置
+ */
+export const setJimengGlobalConfig = (config: JimengGlobalConfig): void => {
+  try {
+    localStorage.setItem(JIMENG_GLOBAL_CONFIG_KEY, JSON.stringify(config));
+  } catch (e) {
+    console.error('保存即梦全局配置失败:', e);
+  }
+};
+
+/**
+ * 判断模型是否为即梦模型
+ */
+const isJimengModel = (model: ModelDefinition | null): boolean => {
+  if (!model) return false;
+  return model.providerId === 'jimeng' || 
+         model.id.startsWith('jimeng-') || 
+         (model.type === 'video' && (model as VideoModelDefinition).params.mode === 'jimeng');
+};
+
+/**
  * 获取模型对应的 API Key
- * 优先级：模型专属 Key > 提供商 Key
+ * 优先级（即梦模型）：全局即梦配置 > 模型专属 Key > 提供商 Key
+ * 优先级（其他模型）：模型专属 Key > 提供商 Key
  */
 export const getApiKeyForModel = (modelId: string): string | undefined => {
   const model = getModelById(modelId);
   if (!model) return undefined;
+  
+  // 即梦模型优先使用全局配置
+  if (isJimengModel(model)) {
+    const globalConfig = getJimengGlobalConfig();
+    if (globalConfig.sessionToken) {
+      return globalConfig.sessionToken;
+    }
+  }
   
   // 1. 优先使用模型专属 API Key
   if (model.apiKey) {
@@ -475,10 +529,19 @@ export const getApiKeyForModel = (modelId: string): string | undefined => {
 
 /**
  * 获取模型对应的 API 基础 URL
+ * 即梦模型优先使用全局配置
  */
 export const getApiBaseUrlForModel = (modelId: string): string => {
   const model = getModelById(modelId);
   if (!model) return BUILTIN_PROVIDERS[0].baseUrl.replace(/\/+$/, '');
+  
+  // 即梦模型优先使用全局配置
+  if (isJimengModel(model)) {
+    const globalConfig = getJimengGlobalConfig();
+    if (globalConfig.baseUrl) {
+      return globalConfig.baseUrl.replace(/\/+$/, '');
+    }
+  }
   
   const provider = getProviderById(model.providerId);
   const baseUrl = provider?.baseUrl || BUILTIN_PROVIDERS[0].baseUrl;

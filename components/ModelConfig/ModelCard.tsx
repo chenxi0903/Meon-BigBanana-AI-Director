@@ -99,7 +99,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
                 : 'bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:bg-[var(--border-secondary)]'
             }`}
           >
-            {ratio === '16:9' ? '横屏' : ratio === '9:16' ? '竖屏' : '方形'}
+{ratio === '16:9' ? '横屏' : ratio === '9:16' ? '竖屏' : ratio === '1:1' ? '方形' : ratio}
           </button>
         ))}
       </div>
@@ -121,7 +121,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
                   : 'bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:bg-[var(--border-secondary)]'
               }`}
             >
-              {ratio === '16:9' ? '横屏' : ratio === '9:16' ? '竖屏' : '方形'}
+  {ratio === '16:9' ? '横屏' : ratio === '9:16' ? '竖屏' : ratio === '1:1' ? '方形' : ratio}
             </button>
           ))}
         </div>
