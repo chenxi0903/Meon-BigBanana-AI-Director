@@ -394,7 +394,7 @@ export const BUILTIN_CHAT_MODELS: ChatModelDefinition[] = [
     providerId: 'deepseek',
     description: 'DeepSeek Chat，强大的对话模型，适合中文场景',
     isBuiltIn: true,
-    isEnabled: false,
+    isEnabled: true,
     params: { ...DEFAULT_CHAT_PARAMS },
   },
   {

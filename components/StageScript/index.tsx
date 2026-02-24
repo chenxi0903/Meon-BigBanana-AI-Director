@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ProjectState, Shot } from '../../types';
 import { useAlert } from '../GlobalAlert';
 import { parseScriptToData, generateShotList, continueScript, continueScriptStream, rewriteScript, rewriteScriptStream, setScriptLogCallback, clearScriptLogCallback, logScriptProgress } from '../../services/aiService';
+import { getRegistryState } from '../../services/modelRegistry';
 import { getFinalValue, validateConfig } from './utils';
 import { DEFAULTS } from './constants';
 import ConfigPanel from './ConfigPanel';
@@ -26,7 +27,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
   const [localTitle, setLocalTitle] = useState(project.title);
   const [localDuration, setLocalDuration] = useState(project.targetDuration || DEFAULTS.duration);
   const [localLanguage, setLocalLanguage] = useState(project.language || DEFAULTS.language);
-  const [localModel, setLocalModel] = useState(project.shotGenerationModel || DEFAULTS.model);
+  const [localModel, setLocalModel] = useState(project.shotGenerationModel || getRegistryState().activeModels.chat || DEFAULTS.model);
   const [localVisualStyle, setLocalVisualStyle] = useState(project.visualStyle || DEFAULTS.visualStyle);
   const [customDurationInput, setCustomDurationInput] = useState('');
   const [customModelInput, setCustomModelInput] = useState('');
@@ -55,7 +56,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setLocalTitle(project.title);
     setLocalDuration(project.targetDuration || DEFAULTS.duration);
     setLocalLanguage(project.language || DEFAULTS.language);
-    setLocalModel(project.shotGenerationModel || DEFAULTS.model);
+    setLocalModel(project.shotGenerationModel || getRegistryState().activeModels.chat || DEFAULTS.model);
     setLocalVisualStyle(project.visualStyle || DEFAULTS.visualStyle);
   }, [project.id]);
 
