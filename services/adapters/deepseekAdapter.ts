@@ -1,22 +1,11 @@
 /**
- * 对话模型适配器
- * 处理 OpenAI 兼容的 Chat Completions API
+ * DeepSeek OpenAPI 适配器
+ * 处理 DeepSeek 的 OpenAI 兼容 API
  */
 
 import { ChatModelDefinition, ChatOptions, ChatModelParams } from '../../types/model';
-import { getApiKeyForModel, getApiBaseUrlForModel, getActiveChatModel } from '../modelRegistry';
-import { callGoogleGenAiChatApi } from './googleGenAiAdapter';
-import { callDeepSeekChatApi } from './deepseekAdapter';
-
-/**
- * API Key 错误类
- */
-export class ApiKeyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ApiKeyError';
-  }
-}
+import { getApiKeyForModel, getApiBaseUrlForModel } from '../modelRegistry';
+import { ApiKeyError } from './chatAdapter';
 
 /**
  * 重试操作
@@ -59,28 +48,18 @@ const cleanJsonResponse = (response: string): string => {
 };
 
 /**
- * 调用对话模型 API
+ * 调用 DeepSeek OpenAPI 对话模型 API
  */
-export const callChatApi = async (
+export const callDeepSeekChatApi = async (
   options: ChatOptions,
   model?: ChatModelDefinition
 ): Promise<string> => {
   // 获取当前激活的模型
-  const activeModel = model || getActiveChatModel();
+  const activeModel = model;
   if (!activeModel) {
     throw new Error('没有可用的对话模型');
   }
 
-  // 根据 providerId 路由到不同的适配器
-  if (activeModel.providerId === 'google') {
-    return callGoogleGenAiChatApi(options, activeModel);
-  }
-  
-  if (activeModel.providerId === 'deepseek') {
-    return callDeepSeekChatApi(options, activeModel);
-  }
-
-  // 默认使用 OpenAI 兼容的 API
   // 获取 API 配置
   const apiKey = getApiKeyForModel(activeModel.id);
   if (!apiKey) {
@@ -111,6 +90,7 @@ export const callChatApi = async (
     messages,
     temperature: params.temperature,
   };
+  
   if (params.maxTokens !== undefined) {
     requestBody.max_tokens = params.maxTokens;
   }
@@ -118,9 +98,11 @@ export const callChatApi = async (
   if (params.topP !== undefined) {
     requestBody.top_p = params.topP;
   }
+  
   if (params.frequencyPenalty !== undefined) {
     requestBody.frequency_penalty = params.frequencyPenalty;
   }
+  
   if (params.presencePenalty !== undefined) {
     requestBody.presence_penalty = params.presencePenalty;
   }
