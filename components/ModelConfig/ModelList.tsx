@@ -70,7 +70,8 @@ const ModelList: React.FC<ModelListProps> = ({ type, onRefresh }) => {
   const handleUpdateModel = (modelId: string, updates: Partial<ModelDefinition>) => {
     if (updateModel(modelId, updates)) {
       loadModels();
-      onRefresh();
+      // 不调用 onRefresh，避免父组件重渲染导致输入框失去焦点
+      // onRefresh();
     }
   };
 
