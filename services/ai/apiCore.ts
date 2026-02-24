@@ -13,7 +13,10 @@ import {
   getActiveChatModel,
   getActiveVideoModel,
   getActiveImageModel,
+  getProviderById,
 } from '../modelRegistry';
+import { callChatApi } from '../adapters/chatAdapter';
+import { ChatOptions } from '../../types/model';
 
 // ============================================
 // 脚本日志回调（供各服务模块使用）
@@ -94,7 +97,14 @@ export const checkApiKey = (type: 'chat' | 'image' | 'video' = 'chat', modelId?:
     if (modelApiKey) return modelApiKey;
   }
 
-  throw new ApiKeyError("API Key 缺失，请在模型配置中为该模型或其提供商设置 API Key。");
+  const modelName = resolvedModel?.name || modelId || '未知模型';
+  const providerName = resolvedModel ? getProviderById(resolvedModel.providerId)?.name : undefined;
+  const providerHint = providerName ? `（提供商：${providerName}）` : '';
+  
+  throw new ApiKeyError(
+    `API Key 缺失：模型 "${modelName}"${providerHint} 没有配置 API Key。\n` +
+    `请在模型配置中为该模型或其提供商设置 API Key，或切换到其他已配置 Key 的模型。`
+  );
 };
 
 /**
@@ -214,6 +224,7 @@ export const parseHttpError = async (response: Response): Promise<Error> => {
 
 /**
  * 调用聊天完成API（非流式）
+ * 使用统一的适配器系统，支持 Google、DeepSeek 等不同提供商
  */
 export const chatCompletion = async (
   prompt: string,
@@ -223,44 +234,26 @@ export const chatCompletion = async (
   responseFormat?: 'json_object',
   timeout: number = 600000
 ): Promise<string> => {
-  const apiKey = checkApiKey('chat', model);
-  const requestModel = resolveRequestModel('chat', model);
-
-  const requestBody: any = {
-    model: requestModel,
-    messages: [{ role: 'user', content: prompt }],
-    temperature: temperature
-  };
-
-  if (responseFormat === 'json_object') {
-    requestBody.response_format = { type: 'json_object' };
+  // 解析模型配置
+  const resolvedModel = resolveModel('chat', model);
+  if (!resolvedModel) {
+    throw new Error(`找不到模型: ${model}`);
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  // 使用统一的适配器系统
+  const options: ChatOptions = {
+    prompt,
+    responseFormat: responseFormat === 'json_object' ? 'json' : 'text',
+    timeout,
+    overrideParams: {
+      temperature,
+      maxTokens,
+    },
+  };
 
   try {
-    const apiBase = getApiBase('chat', model);
-    const resolved = resolveModel('chat', model);
-    const endpoint = resolved?.endpoint || '/v1/chat/completions';
-    const response = await fetch(`${apiBase}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal
-    });
-
-    if (!response.ok) {
-      throw await parseHttpError(response);
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || '';
+    return await callChatApi(options, resolvedModel);
   } catch (error: any) {
-    clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
       throw new Error(`请求超时（${timeout}ms）`);
     }
@@ -270,6 +263,7 @@ export const chatCompletion = async (
 
 /**
  * 调用聊天完成API（SSE流式模式）
+ * 对于 Google 和 DeepSeek，如果适配器不支持流式，则降级到非流式
  */
 export const chatCompletionStream = async (
   prompt: string,
@@ -279,6 +273,42 @@ export const chatCompletionStream = async (
   timeout: number = 600000,
   onDelta?: (delta: string) => void
 ): Promise<string> => {
+  // 解析模型配置
+  const resolvedModel = resolveModel('chat', model);
+  if (!resolvedModel) {
+    throw new Error(`找不到模型: ${model}`);
+  }
+
+  // Google 和 DeepSeek 适配器目前不支持流式，降级到非流式
+  if (resolvedModel.providerId === 'google' || resolvedModel.providerId === 'deepseek') {
+    const options: ChatOptions = {
+      prompt,
+      responseFormat: responseFormat === 'json_object' ? 'json' : 'text',
+      timeout,
+      overrideParams: {
+        temperature,
+      },
+    };
+    
+    try {
+      const result = await callChatApi(options, resolvedModel);
+      // 模拟流式输出，逐字符回调
+      if (onDelta) {
+        for (let i = 0; i < result.length; i++) {
+          onDelta(result[i]);
+          await new Promise(resolve => setTimeout(resolve, 10)); // 小延迟模拟流式
+        }
+      }
+      return result;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new Error(`请求超时（${timeout}ms）`);
+      }
+      throw error;
+    }
+  }
+
+  // 对于 OpenAI 兼容的 API，使用流式处理
   const apiKey = checkApiKey('chat', model);
   const requestModel = resolveRequestModel('chat', model);
   const requestBody: any = {
