@@ -418,12 +418,13 @@ export const updateModel = (id: string, updates: Partial<ModelDefinition>): bool
   const index = state.models.findIndex(m => m.id === id);
   if (index === -1) return false;
 
-  // 内置模型只能修改 isEnabled 和 params
+  // 内置模型只能修改 isEnabled, params 和 apiKey
   if (state.models[index].isBuiltIn) {
     const allowedUpdates: Partial<ModelDefinition> = {};
     if (updates.isEnabled !== undefined) allowedUpdates.isEnabled = updates.isEnabled;
     if (updates.params) allowedUpdates.params = updates.params as any;
-    state.models[index] = { ...state.models[index], ...allowedUpdates } as ModelDefinition;
+      if ('apiKey' in updates) allowedUpdates.apiKey = updates.apiKey;
+      state.models[index] = { ...state.models[index], ...allowedUpdates } as ModelDefinition;
   } else {
     state.models[index] = { ...state.models[index], ...updates } as ModelDefinition;
   }
