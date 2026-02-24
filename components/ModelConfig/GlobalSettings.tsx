@@ -77,11 +77,11 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
           <div className="flex-1">
             <h3 className="text-base font-bold text-[var(--text-primary)] mb-1 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[var(--warning-text)]" />
-              推荐使用 BigBanana API
+              推荐使用 Meon API
             </h3>
             <p className="text-xs text-[var(--text-tertiary)] mb-3 leading-relaxed">
               支持 GPT-5.1、GPT-5.2、Claude Sonnet 4.5、Gemini-3、Veo 3.1、Sora-2 等多种模型。
-              稳定快速，价格优惠。本开源项目由 BigBanana API 提供支持。
+              稳定快速，价格优惠。本项目由 Meon API 提供支持。
             </p>
             <div className="flex items-center gap-3">
               <a 
@@ -181,7 +181,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
       <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-lg border border-[var(--border-primary)]">
         <h4 className="text-xs font-bold text-[var(--text-tertiary)] mb-2">配置说明</h4>
         <ul className="text-[10px] text-[var(--text-muted)] space-y-1 list-disc list-inside">
-          <li>全局 API Key 用于所有BigBanana API 内置模型的调用</li>
+          <li>全局 API Key 用于所有 Meon API 内置模型的调用</li>
           <li>你可以在各模型类别中调整模型参数（温度、Token 等）</li>
           <li>支持添加自定义模型，使用其他 API 服务</li>
           <li>所有配置仅保存在本地浏览器，不会上传到服务器</li>

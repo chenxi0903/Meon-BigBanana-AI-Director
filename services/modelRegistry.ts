@@ -20,7 +20,7 @@ import {
 } from '../types/model';
 
 // localStorage 键名
-const STORAGE_KEY = 'bigbanana_model_registry';
+const STORAGE_KEY = 'meon_model_registry';
 const API_KEY_STORAGE_KEY = 'antsk_api_key';
 
 // 规范化 URL（去尾部斜杠、转小写）用于去重

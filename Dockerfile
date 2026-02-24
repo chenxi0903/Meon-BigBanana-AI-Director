@@ -26,8 +26,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # 从构建阶段复制构建产物到 nginx 目录
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 复制 favicon.ico 到 nginx 目录
-COPY --from=builder /app/favicon.ico /usr/share/nginx/html/
+# 复制 favicon 到 nginx 目录
+COPY --from=builder "/app/favicon (1).ico" /usr/share/nginx/html/
+COPY --from=builder /app/meon_logo.svg /usr/share/nginx/html/
 
 # 复制 qrcode.png 到 nginx 目录
 COPY --from=builder /app/qrcode.png /usr/share/nginx/html/

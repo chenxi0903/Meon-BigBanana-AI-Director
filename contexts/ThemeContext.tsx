@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'bigbanana_theme';
+const STORAGE_KEY = 'meon_theme';
 
 export type Theme = 'dark' | 'light';
 

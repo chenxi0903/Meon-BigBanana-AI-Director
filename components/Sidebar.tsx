@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, Users, Clapperboard, Film, ChevronLeft, ListTree, HelpCircle, Cpu, Sun, Moon, Loader2 } from 'lucide-react';
-import logoImg from '../logo.png';
+import logoImg from '../meon_logo.svg';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
@@ -35,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, proje
         >
           <img src={logoImg} alt="Logo" className="w-8 h-8 flex-shrink-0 transition-transform group-hover:scale-110" />
           <div className="overflow-hidden">
-            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-wider group-hover:text-[var(--text-secondary)] transition-colors">BigBanana</h1>
+            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-wider group-hover:text-[var(--text-secondary)] transition-colors">Meon</h1>
             <p className="text-[10px] text-[var(--text-tertiary)] tracking-widest group-hover:text-[var(--text-secondary)] transition-colors">Studio Pro</p>
           </div>
         </a>

@@ -11,7 +11,7 @@ import {
   syncProjectToCloud,
 } from './supabase/syncService';
 
-const DB_NAME = 'BigBananaDB';
+const DB_NAME = 'MeonDB';
 const DB_VERSION = 2;
 const STORE_NAME = 'projects';
 const ASSET_STORE_NAME = 'assetLibrary';

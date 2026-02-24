@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import logoImg from '../../logo.png';
+import logoImg from '../../meon_logo.svg';
 
 interface WelcomePageProps {
   onNext: () => void;
@@ -15,7 +15,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onSkip }) => {
         <div className="absolute -inset-8 bg-[var(--accent-bg)] rounded-full blur-3xl opacity-50"></div>
         <img 
           src={logoImg} 
-          alt="BigBanana AI Director" 
+          alt="Meon" 
           className="w-24 h-24 relative z-10"
         />
         <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-[var(--warning-text)] animate-pulse" />

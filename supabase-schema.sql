@@ -1,5 +1,5 @@
 -- ============================================
--- BigBanana AI Director - Supabase 数据库 Schema
+-- Meon - Supabase 数据库 Schema
 -- 在 Supabase Dashboard > SQL Editor 中执行此文件
 -- ============================================
 

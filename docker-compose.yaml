@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  bigbanana-ai:
+  meon:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: bigbanana-ai-app
+    container_name: meon-app
     ports:
       - "3005:80"
     environment:

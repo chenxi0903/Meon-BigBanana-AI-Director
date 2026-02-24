@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Loader2, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import logoImg from '../../logo.png';
+import logoImg from '../../meon_logo.svg';
 
 type AuthMode = 'login' | 'register';
 
@@ -70,7 +70,7 @@ const LoginPage: React.FC = () => {
         <div className="text-center mb-10">
           <img src={logoImg} alt="Logo" className="w-16 h-16 mx-auto mb-4" />
           <h1 className="text-2xl font-light text-[var(--text-primary)] tracking-tight mb-1">
-            BigBanana AI Director
+            Meon
           </h1>
           <p className="text-xs text-[var(--text-muted)] font-mono uppercase tracking-widest">
             {mode === 'login' ? 'Sign In' : 'Create Account'}
@@ -188,7 +188,7 @@ const LoginPage: React.FC = () => {
 
         {/* Footer */}
         <div className="mt-6 text-center text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-widest">
-          BigBanana AI Director &copy; {new Date().getFullYear()}
+          Meon &copy; {new Date().getFullYear()}
         </div>
       </div>
     </div>
