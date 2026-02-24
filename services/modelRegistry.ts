@@ -21,7 +21,6 @@ import {
 
 // localStorage 键名
 const STORAGE_KEY = 'meon_model_registry';
-const API_KEY_STORAGE_KEY = 'antsk_api_key';
 
 // 规范化 URL（去尾部斜杠、转小写）用于去重
 const normalizeBaseUrl = (url: string): string => url.trim().replace(/\/+$/, '').toLowerCase();
@@ -40,7 +39,6 @@ const getDefaultState = (): ModelRegistryState => ({
   providers: [...BUILTIN_PROVIDERS],
   models: [...ALL_BUILTIN_MODELS],
   activeModels: { ...DEFAULT_ACTIVE_MODELS },
-  globalApiKey: localStorage.getItem(API_KEY_STORAGE_KEY) || undefined,
 });
 
 /**
@@ -143,9 +141,6 @@ export const loadRegistry = (): ModelRegistryState => {
         parsed.activeModels.video = 'veo';
         activeModelMigrated = true;
       }
-      
-      // 同步全局 API Key
-      parsed.globalApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || parsed.globalApiKey;
       
       registryState = parsed;
 
@@ -457,29 +452,12 @@ export const toggleModelEnabled = (id: string, enabled: boolean): boolean => {
 // ============================================
 
 /**
- * 获取全局 API Key
- */
-export const getGlobalApiKey = (): string | undefined => {
-  return loadRegistry().globalApiKey || localStorage.getItem(API_KEY_STORAGE_KEY) || undefined;
-};
-
-/**
- * 设置全局 API Key
- */
-export const setGlobalApiKey = (apiKey: string): void => {
-  const state = loadRegistry();
-  state.globalApiKey = apiKey;
-  localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-  saveRegistry(state);
-};
-
-/**
  * 获取模型对应的 API Key
- * 优先级：模型专属 Key > 提供商 Key > 全局 Key
+ * 优先级：模型专属 Key > 提供商 Key
  */
 export const getApiKeyForModel = (modelId: string): string | undefined => {
   const model = getModelById(modelId);
-  if (!model) return getGlobalApiKey();
+  if (!model) return undefined;
   
   // 1. 优先使用模型专属 API Key
   if (model.apiKey) {
@@ -492,8 +470,7 @@ export const getApiKeyForModel = (modelId: string): string | undefined => {
     return provider.apiKey;
   }
   
-  // 3. 最后使用全局 API Key
-  return getGlobalApiKey();
+  return undefined;
 };
 
 /**

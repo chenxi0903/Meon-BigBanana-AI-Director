@@ -5,8 +5,6 @@
 
 import { AspectRatio } from "../../types";
 import {
-  getGlobalApiKey as getRegistryApiKey,
-  setGlobalApiKey as setRegistryApiKey,
   getApiBaseUrlForModel,
   getApiKeyForModel,
   getModelById,
@@ -53,17 +51,6 @@ export class ApiKeyError extends Error {
   }
 }
 
-/** 运行时 API Key（向后兼容） */
-let runtimeApiKey: string = process.env.API_KEY || "";
-
-/**
- * 设置全局API密钥
- */
-export const setGlobalApiKey = (key: string) => {
-  runtimeApiKey = key;
-  setRegistryApiKey(key);
-};
-
 /** 默认 API base URL（向后兼容） */
 const DEFAULT_API_BASE = 'https://api.antsk.cn';
 
@@ -107,13 +94,7 @@ export const checkApiKey = (type: 'chat' | 'image' | 'video' = 'chat', modelId?:
     if (modelApiKey) return modelApiKey;
   }
 
-  const registryKey = getRegistryApiKey();
-  console.log(`[checkApiKey] registryKey found:`, !!registryKey);
-  if (registryKey) return registryKey;
-
-  console.log(`[checkApiKey] runtimeApiKey found:`, !!runtimeApiKey);
-  if (!runtimeApiKey) throw new ApiKeyError("API Key 缺失，请在模型配置中设置 API Key。");
-  return runtimeApiKey;
+  throw new ApiKeyError("API Key 缺失，请在模型配置中为该模型或其提供商设置 API Key。");
 };
 
 /**
@@ -385,52 +366,6 @@ export const chatCompletionStream = async (
       throw new Error(`请求超时（${timeout}ms）`);
     }
     throw error;
-  }
-};
-
-// ============================================
-// API Key 验证
-// ============================================
-
-/**
- * 验证 API Key 的连通性
- */
-export const verifyApiKey = async (key: string): Promise<{ success: boolean; message: string }> => {
-  try {
-    const apiBase = getApiBase('chat');
-    const response = await fetch(`${apiBase}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-41',
-        messages: [{ role: 'user', content: '仅返回1' }],
-        temperature: 0.1,
-        max_tokens: 5
-      })
-    });
-
-    if (!response.ok) {
-      let errorMessage = `验证失败: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error?.message || errorMessage;
-      } catch (e) {
-        // ignore
-      }
-      return { success: false, message: errorMessage };
-    }
-
-    const data = await response.json();
-    if (data.choices?.[0]?.message?.content !== undefined) {
-      return { success: true, message: 'API Key 验证成功' };
-    } else {
-      return { success: false, message: '返回格式异常' };
-    }
-  } catch (error: any) {
-    return { success: false, message: error.message || '网络错误' };
   }
 };
 

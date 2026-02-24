@@ -6,8 +6,6 @@
 // 基础设施层
 export {
   ApiKeyError,
-  setGlobalApiKey,
-  verifyApiKey,
   // 以下为内部辅助，但部分场景仍可能直接使用
   retryOperation,
   cleanJsonString,

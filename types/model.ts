@@ -151,7 +151,6 @@ export interface ModelRegistryState {
   providers: ModelProvider[];
   models: ModelDefinition[];
   activeModels: ActiveModels;
-  globalApiKey?: string;
 }
 
 // ============================================

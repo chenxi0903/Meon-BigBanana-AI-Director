@@ -14,10 +14,7 @@ import {
   updateModel,
   registerModel,
   removeModel,
-  getGlobalApiKey,
-  setGlobalApiKey,
 } from '../../services/modelRegistry';
-import { verifyApiKey } from '../../services/modelService';
 import ModelList from './ModelList';
 import GlobalSettings from './GlobalSettings';
 

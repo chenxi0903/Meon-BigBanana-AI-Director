@@ -12,7 +12,6 @@ import LoginPage from './components/Auth/LoginPage';
 import { ProjectState } from './types';
 import { Save, CheckCircle, X, Loader2 } from 'lucide-react';
 import { saveProjectToDB } from './services/storageService';
-import { setGlobalApiKey } from './services/aiService';
 import { setLogCallback, clearLogCallback } from './services/renderLogService';
 import { useAlert } from './components/GlobalAlert';
 import { useAuth } from './contexts/AuthContext';
@@ -22,7 +21,6 @@ function App() {
   const { user, loading: authLoading, isConfigured: isSupabaseConfigured } = useAuth();
   const { showAlert } = useAlert();
   const [project, setProject] = useState<ProjectState | null>(null);
-  const [apiKey, setApiKey] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [showSaveStatus, setShowSaveStatus] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
@@ -50,12 +48,7 @@ function App() {
 
   // Load API Key from localStorage on mount
   useEffect(() => {
-    const storedKey = localStorage.getItem('antsk_api_key');
-    if (storedKey) {
-      setApiKey(storedKey);
-      setGlobalApiKey(storedKey);
-    }
-    // 检查是否需要显示首次引导（无论有没有 API Key）
+    // 检查是否需要显示首次引导
     if (shouldShowOnboarding()) {
       setShowOnboarding(true);
     }
@@ -78,19 +71,6 @@ function App() {
   const handleShowOnboarding = () => {
     resetOnboarding();
     setShowOnboarding(true);
-  };
-
-  // 保存 API Key（从设置或引导中）
-  const handleSaveApiKey = (key: string) => {
-    if (key) {
-      setApiKey(key);
-      setGlobalApiKey(key);
-      localStorage.setItem('antsk_api_key', key);
-    } else {
-      setApiKey('');
-      setGlobalApiKey('');
-      localStorage.removeItem('antsk_api_key');
-    }
   };
 
   // 显示模型配置弹窗
@@ -330,8 +310,6 @@ function App() {
            <Onboarding 
              onComplete={handleOnboardingComplete}
              onQuickStart={handleOnboardingQuickStart}
-             currentApiKey={apiKey}
-             onSaveApiKey={handleSaveApiKey}
            />
          )}
          <ModelConfigModal
@@ -381,8 +359,6 @@ function App() {
         <Onboarding 
           onComplete={handleOnboardingComplete}
           onQuickStart={handleOnboardingQuickStart}
-          currentApiKey={apiKey}
-          onSaveApiKey={handleSaveApiKey}
         />
       )}
 

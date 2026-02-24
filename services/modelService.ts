@@ -11,12 +11,10 @@ import {
   VideoDuration,
 } from '../types/model';
 
-import { callChatApi, verifyApiKey as verifyChatApiKey, ApiKeyError } from './adapters/chatAdapter';
+import { callChatApi, ApiKeyError } from './adapters/chatAdapter';
 import { callImageApi } from './adapters/imageAdapter';
 import { callVideoApi } from './adapters/videoAdapter';
 import {
-  getGlobalApiKey,
-  setGlobalApiKey as setRegistryApiKey,
   getActiveVideoModel,
 } from './modelRegistry';
 
@@ -146,31 +144,6 @@ export const splitShot = async (options: {
   const prompt = buildShotSplitPrompt(options);
   const result = await chatJson({ prompt });
   return JSON.parse(result);
-};
-
-// ============================================
-// API Key 管理
-// ============================================
-
-/**
- * 验证 API Key
- */
-export const verifyApiKey = async (apiKey: string): Promise<{ success: boolean; message: string }> => {
-  return verifyChatApiKey(apiKey);
-};
-
-/**
- * 获取全局 API Key
- */
-export const getApiKey = (): string | undefined => {
-  return getGlobalApiKey();
-};
-
-/**
- * 设置全局 API Key
- */
-export const setApiKey = (apiKey: string): void => {
-  setRegistryApiKey(apiKey);
 };
 
 // ============================================
