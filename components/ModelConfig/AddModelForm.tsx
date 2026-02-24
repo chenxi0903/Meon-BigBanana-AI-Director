@@ -3,7 +3,7 @@
  * 支持自定义提供商和 endpoint
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { 
   ModelType, 
@@ -43,24 +43,9 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
   const [customProviderName, setCustomProviderName] = useState('');
   const [customProviderBaseUrl, setCustomProviderBaseUrl] = useState('');
   const [customProviderApiKey, setCustomProviderApiKey] = useState('');
-  const apiKeyInputRef = useRef<HTMLInputElement>(null);
-  const customProviderApiKeyInputRef = useRef<HTMLInputElement>(null);
   
   // 展开高级选项
   const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // 处理粘贴事件后恢复焦点
-  const handlePaste = (ref: React.RefObject<HTMLInputElement>) => {
-    return (e: React.ClipboardEvent<HTMLInputElement>) => {
-      setTimeout(() => {
-        if (ref.current) {
-          ref.current.focus();
-          const length = ref.current.value.length;
-          ref.current.setSelectionRange(length, length);
-        }
-      }, 0);
-    };
-  };
 
   const handleSave = () => {
     if (!name.trim() || !apiModel.trim()) {
@@ -179,11 +164,9 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
         <div>
           <label className="text-[10px] text-[var(--text-tertiary)] block mb-1">API Key（可选）</label>
           <input
-            ref={apiKeyInputRef}
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            onPaste={handlePaste(apiKeyInputRef)}
             placeholder="留空则使用提供商 API Key"
             className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] rounded px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-mono"
           />
@@ -254,11 +237,9 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
             <div>
               <label className="text-[10px] text-[var(--text-tertiary)] block mb-1">提供商 API Key *</label>
               <input
-                ref={customProviderApiKeyInputRef}
                 type="password"
                 value={customProviderApiKey}
                 onChange={(e) => setCustomProviderApiKey(e.target.value)}
-                onPaste={handlePaste(customProviderApiKeyInputRef)}
                 placeholder="输入此提供商的 API Key"
                 className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] rounded px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-mono"
               />

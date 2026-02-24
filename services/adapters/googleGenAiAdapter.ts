@@ -77,6 +77,15 @@ export const callGoogleGenAiChatApi = async (
   
   // 初始化 Google GenAI 客户端
   const genAI = new GoogleGenerativeAI(apiKey);
+  const genModel = genAI.getGenerativeModel({ model: apiModel });
+  
+  // 构建消息内容
+  let prompt = '';
+  if (options.systemPrompt) {
+    prompt = `${options.systemPrompt}\n\n${options.prompt}`;
+  } else {
+    prompt = options.prompt;
+  }
   
   // 构建生成配置
   const generationConfig: any = {
@@ -96,35 +105,22 @@ export const callGoogleGenAiChatApi = async (
     generationConfig.responseMimeType = 'application/json';
   }
   
-  // 构建系统指令（system prompt）
-  const systemInstruction = options.systemPrompt || undefined;
-  
-  // 获取模型实例
-  const modelConfig: any = { model: apiModel };
-  if (systemInstruction) {
-    modelConfig.systemInstruction = systemInstruction;
-  }
-  const genModel = genAI.getGenerativeModel(modelConfig);
-  
   // 超时控制
   const timeout = options.timeout || 600000; // 默认 10 分钟
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
   
   try {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`请求超时 (${timeout / 1000}秒)`)), timeout);
+    const result = await retryOperation(async () => {
+      const response = await genModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig,
+      });
+      
+      return response;
     });
     
-    const result = await Promise.race([
-      retryOperation(async () => {
-        const response = await genModel.generateContent({
-          contents: [{ role: 'user', parts: [{ text: options.prompt }] }],
-          generationConfig,
-        });
-        
-        return response;
-      }),
-      timeoutPromise,
-    ]);
+    clearTimeout(timeoutId);
     
     const responseText = result.response.text();
     
@@ -135,8 +131,10 @@ export const callGoogleGenAiChatApi = async (
     
     return responseText;
   } catch (error: any) {
-    if (error.message?.includes('请求超时')) {
-      throw error;
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      throw new Error(`请求超时 (${timeout / 1000}秒)`);
     }
     
     // 处理 Google GenAI SDK 的错误

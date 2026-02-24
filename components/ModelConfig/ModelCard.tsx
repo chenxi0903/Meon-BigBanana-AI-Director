@@ -3,7 +3,7 @@
  * 显示单个模型的配置
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, CheckCircle, Circle } from 'lucide-react';
 import { 
   ModelDefinition, 
@@ -35,12 +35,6 @@ const ModelCard: React.FC<ModelCardProps> = ({
 }) => {
   const [editParams, setEditParams] = useState<any>(model.params);
   const [editApiKey, setEditApiKey] = useState<string>(model.apiKey || '');
-  const apiKeyInputRef = useRef<HTMLInputElement>(null);
-
-  // 同步外部 model.apiKey 变化到本地状态
-  useEffect(() => {
-    setEditApiKey(model.apiKey || '');
-  }, [model.apiKey]);
 
   const handleParamChange = (key: string, value: any) => {
     const newParams = { ...editParams, [key]: value };
@@ -53,26 +47,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
   };
 
   const handleApiKeyChange = (value: string) => {
-    // 只更新本地状态，不触发父组件更新
     setEditApiKey(value);
-  };
-
-  const handleApiKeyBlur = () => {
-    // 失焦时才保存到持久化存储
-    onUpdate({ apiKey: editApiKey.trim() || undefined });
-  };
-
-  // 处理粘贴事件后恢复焦点
-  const handleApiKeyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    // 延迟恢复焦点，确保粘贴内容已处理
-    setTimeout(() => {
-      if (apiKeyInputRef.current) {
-        apiKeyInputRef.current.focus();
-        // 将光标移到末尾
-        const length = apiKeyInputRef.current.value.length;
-        apiKeyInputRef.current.setSelectionRange(length, length);
-      }
-    }, 0);
+    onUpdate({ apiKey: value.trim() || undefined });
   };
 
   const renderChatParams = (params: ChatModelParams) => (
@@ -274,12 +250,9 @@ const ModelCard: React.FC<ModelCardProps> = ({
                 API Key（留空使用提供商 Key）
               </label>
               <input
-                ref={apiKeyInputRef}
                 type="password"
                 value={editApiKey}
                 onChange={(e) => handleApiKeyChange(e.target.value)}
-                onBlur={handleApiKeyBlur}
-                onPaste={handleApiKeyPaste}
                 placeholder="留空则使用提供商 API Key"
                 className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] rounded px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-mono"
               />

@@ -389,6 +389,12 @@ export const AVAILABLE_CHAT_MODELS = [
   { name: 'GPT-5.1', value: 'gpt-5.1', description: '最新版本，推荐使用' },
   { name: 'GPT-4.1', value: 'gpt-41', description: '稳定版本' },
   { name: 'GPT-5.2', value: 'gpt-5.2', description: '实验版本' },
+  { name: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview', description: '轻量快速文本生成' },
+  { name: 'Gemini 3 Pro Preview', value: 'gemini-3-pro-preview', description: '复杂文本生成' },
+  { name: 'Gemini 2.5 Flash Lite', value: 'gemini-2.5-flash-lite', description: '低成本文本生成' },
+  { name: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash', description: '快速稳定文本生成' },
+  { name: 'DeepSeek Chat', value: 'deepseek-chat', description: '中文对话与文本生成' },
+  { name: 'DeepSeek Reasoner', value: 'deepseek-reasoner', description: '推理与文本生成' },
 ];
 
 /**
