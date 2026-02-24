@@ -3,7 +3,7 @@
  * 独立的模型管理界面
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Settings, MessageSquare, Image, Video, Key, ExternalLink, Gift, Sparkles } from 'lucide-react';
 import { ModelType, ModelDefinition } from '../../types/model';
 import {
@@ -28,9 +28,6 @@ type TabType = 'global' | 'chat' | 'image' | 'video';
 const ModelConfigModal: React.FC<ModelConfigModalProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>('global');
   const [refreshKey, setRefreshKey] = useState(0);
-  const modalRef = useRef<HTMLDivElement | null>(null);
-  const pointerDownOutsideRef = useRef(false);
-
   const refresh = () => setRefreshKey(k => k + 1);
 
   if (!isOpen) return null;
@@ -43,34 +40,16 @@ const ModelConfigModal: React.FC<ModelConfigModalProps> = ({ isOpen, onClose }) 
   ];
 
   return (
-    <div 
-      className="fixed inset-0 z-[200] flex items-center justify-center"
-      onPointerDown={(e) => {
-        // 仅当按下发生在弹窗外部时，才允许后续抬起关闭。
-        const targetNode = e.target as Node;
-        pointerDownOutsideRef.current = modalRef.current ? !modalRef.current.contains(targetNode) : true;
-      }}
-      onPointerUp={(e) => {
-        // 避免在弹窗内选中文本/拖拽到外部抬起时误触发关闭
-        if (!pointerDownOutsideRef.current) return;
-        const targetNode = e.target as Node;
-        const isOutside = modalRef.current ? !modalRef.current.contains(targetNode) : true;
-        pointerDownOutsideRef.current = false;
-        if (isOutside) onClose();
-      }}
-      onPointerCancel={() => {
-        pointerDownOutsideRef.current = false;
-      }}
-    >
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
       {/* 背景遮罩 */}
-      <div className="absolute inset-0 bg-[var(--bg-base)]/80 backdrop-blur-sm" />
+      <div
+        className="absolute inset-0 bg-[var(--bg-base)]/80 backdrop-blur-sm"
+        onPointerDown={onClose}
+      />
 
       {/* 弹窗 */}
       <div 
         className="relative z-10 w-full max-w-2xl mx-4 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl shadow-2xl animate-in zoom-in-95 fade-in duration-200 max-h-[85vh] flex flex-col"
-        ref={modalRef}
-        onPointerDown={(e) => e.stopPropagation()}
-        onPointerUp={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 头部 */}
