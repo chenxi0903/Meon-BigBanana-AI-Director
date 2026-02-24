@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AlertProvider } from './components/GlobalAlert';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -13,9 +14,11 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ThemeProvider>
-      <AlertProvider>
-        <App />
-      </AlertProvider>
+      <AuthProvider>
+        <AlertProvider>
+          <App />
+        </AlertProvider>
+      </AuthProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

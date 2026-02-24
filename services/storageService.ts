@@ -1,10 +1,37 @@
 import { ProjectState, AssetLibraryItem } from '../types';
+import { isSupabaseConfigured } from './supabase/client';
+import {
+  markProjectDirty,
+  markAssetDirty,
+  fetchAllProjectsFromCloud,
+  fetchProjectFromCloud,
+  deleteProjectFromCloud,
+  deleteAssetFromCloud,
+  mergeProjectLists,
+  syncProjectToCloud,
+} from './supabase/syncService';
 
 const DB_NAME = 'BigBananaDB';
 const DB_VERSION = 2;
 const STORE_NAME = 'projects';
 const ASSET_STORE_NAME = 'assetLibrary';
 const EXPORT_SCHEMA_VERSION = 1;
+
+import { supabase } from './supabase/client';
+
+/**
+ * 获取当前登录的用户 ID（从 Supabase auth）
+ * 返回 null 表示未登录或 Supabase 未配置
+ */
+async function _getCurrentUserId(): Promise<string | null> {
+  if (!isSupabaseConfigured() || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id || null;
+  } catch {
+    return null;
+  }
+}
 
 export interface IndexedDBExportPayload {
   schemaVersion: number;
@@ -146,19 +173,30 @@ export const importIndexedDBData = async (
 
 export const saveProjectToDB = async (project: ProjectState): Promise<void> => {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  const p = { ...project, lastModified: Date.now() };
+
+  // 1. 立即写入 IndexedDB（快速）
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    const p = { ...project, lastModified: Date.now() };
     const request = store.put(p);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
+  });
+
+  // 2. 后台触发云端同步（debounced，不阻塞）
+  _getCurrentUserId().then((userId) => {
+    if (userId) {
+      markProjectDirty(p.id, p, userId);
+    }
+  }).catch(() => {
+    // 同步失败不影响本地保存
   });
 };
 
 export const loadProjectFromDB = async (id: string): Promise<ProjectState> => {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  const project = await new Promise<ProjectState>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
     const request = store.get(id);
@@ -197,11 +235,30 @@ export const loadProjectFromDB = async (id: string): Promise<ProjectState> => {
     };
     request.onerror = () => reject(request.error);
   });
+
+  // 后台检查云端是否有更新版本（不阻塞返回）
+  _getCurrentUserId().then(async (userId) => {
+    if (!userId) return;
+    try {
+      const cloudProject = await fetchProjectFromCloud(id, userId);
+      if (cloudProject && cloudProject.lastModified > project.lastModified) {
+        // 云端版本更新，写入本地缓存
+        const writeDb = await openDB();
+        const writeTx = writeDb.transaction(STORE_NAME, 'readwrite');
+        writeTx.objectStore(STORE_NAME).put(cloudProject);
+        console.log(`☁️ 云端有更新版本，已更新本地缓存: ${cloudProject.title}`);
+      }
+    } catch {
+      // 云端检查失败不影响本地使用
+    }
+  }).catch(() => {});
+
+  return project;
 };
 
 export const getAllProjectsMetadata = async (): Promise<ProjectState[]> => {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  const localProjects = await new Promise<ProjectState[]>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
     const request = store.getAll(); 
@@ -213,7 +270,54 @@ export const getAllProjectsMetadata = async (): Promise<ProjectState[]> => {
     };
     request.onerror = () => reject(request.error);
   });
+
+  // 尝试合并云端项目列表（不阻塞，快速返回本地数据）
+  try {
+    const userId = await _getCurrentUserId();
+    if (userId) {
+      const cloudProjects = await fetchAllProjectsFromCloud(userId);
+      if (cloudProjects.length > 0) {
+        const merged = mergeProjectLists(localProjects, cloudProjects);
+        // 将云端独有的项目也缓存到本地 IndexedDB
+        _cacheCloudOnlyProjects(localProjects, cloudProjects).catch(() => {});
+        return merged;
+      }
+    }
+  } catch {
+    // 云端获取失败，返回本地数据
+  }
+
+  return localProjects;
 };
+
+/**
+ * 将云端独有的项目缓存到本地 IndexedDB
+ */
+async function _cacheCloudOnlyProjects(
+  localProjects: ProjectState[],
+  cloudProjects: ProjectState[]
+): Promise<void> {
+  const localIds = new Set(localProjects.map((p) => p.id));
+  const cloudOnly = cloudProjects.filter((p) => !localIds.has(p.id));
+
+  if (cloudOnly.length === 0) return;
+
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+
+  for (const project of cloudOnly) {
+    store.put(project);
+  }
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => {
+      console.log(`☁️ 已缓存 ${cloudOnly.length} 个云端项目到本地`);
+      resolve();
+    };
+    tx.onerror = () => reject(tx.error);
+  });
+}
 
 // =========================
 // Asset Library Operations
@@ -221,13 +325,20 @@ export const getAllProjectsMetadata = async (): Promise<ProjectState[]> => {
 
 export const saveAssetToLibrary = async (item: AssetLibraryItem): Promise<void> => {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(ASSET_STORE_NAME, 'readwrite');
     const store = tx.objectStore(ASSET_STORE_NAME);
     const request = store.put(item);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
+
+  // 后台同步到云端
+  _getCurrentUserId().then((userId) => {
+    if (userId) {
+      markAssetDirty(item, userId);
+    }
+  }).catch(() => {});
 };
 
 export const getAllAssetLibraryItems = async (): Promise<AssetLibraryItem[]> => {
@@ -247,13 +358,20 @@ export const getAllAssetLibraryItems = async (): Promise<AssetLibraryItem[]> => 
 
 export const deleteAssetFromLibrary = async (id: string): Promise<void> => {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(ASSET_STORE_NAME, 'readwrite');
     const store = tx.objectStore(ASSET_STORE_NAME);
     const request = store.delete(id);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
+
+  // 后台删除云端
+  _getCurrentUserId().then(async (userId) => {
+    if (userId) {
+      await deleteAssetFromCloud(id, userId);
+    }
+  }).catch(() => {});
 };
 
 /**
@@ -281,7 +399,8 @@ export const deleteProjectFromDB = async (id: string): Promise<void> => {
     console.warn('无法加载项目信息，直接删除');
   }
   
-  return new Promise((resolve, reject) => {
+  // 删除本地 IndexedDB
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const request = store.delete(id);
@@ -343,6 +462,16 @@ export const deleteProjectFromDB = async (id: string): Promise<void> => {
       console.error(`❌ 删除项目失败: ${id}`, request.error);
       reject(request.error);
     };
+  });
+
+  // 后台删除云端数据（不阻塞）
+  _getCurrentUserId().then(async (userId) => {
+    if (userId) {
+      await deleteProjectFromCloud(id, userId);
+      console.log(`☁️ 云端项目已删除: ${id}`);
+    }
+  }).catch(() => {
+    console.warn('云端项目删除失败，不影响本地操作');
   });
 };
 

@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Database, Settings, Sun, Moon } from 'lucide-react';
+import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Database, Settings, Sun, Moon, Cloud, CloudOff, RefreshCw, LogOut, User } from 'lucide-react';
 import { ProjectState, AssetLibraryItem, Character, Scene } from '../types';
 import { getAllProjectsMetadata, createNewProjectState, deleteProjectFromDB, getAllAssetLibraryItems, deleteAssetFromLibrary, loadProjectFromDB, saveProjectToDB, exportIndexedDBData, importIndexedDBData } from '../services/storageService';
 import { applyLibraryItemToProject } from '../services/assetLibraryService';
 import { useAlert } from './GlobalAlert';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { subscribeSyncStatus, SyncStatus } from '../services/supabase/syncService';
 import qrCodeImg from '../images/qrcode.jpg';
 
 interface Props {
@@ -16,6 +18,7 @@ interface Props {
 const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowModelConfig }) => {
   const { showAlert } = useAlert();
   const { theme, toggleTheme } = useTheme();
+  const { user, profile, signOut, isConfigured: isSupabaseConfigured } = useAuth();
   const [projects, setProjects] = useState<ProjectState[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -30,7 +33,27 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isDataExporting, setIsDataExporting] = useState(false);
   const [isDataImporting, setIsDataImporting] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  // 订阅同步状态
+  useEffect(() => {
+    const unsubscribe = subscribeSyncStatus((status) => {
+      setSyncStatus(status);
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleSignOut = async () => {
+    showAlert('确定要退出登录吗？', {
+      type: 'warning',
+      showCancel: true,
+      confirmText: '退出登录',
+      onConfirm: async () => {
+        await signOut();
+      },
+    });
+  };
 
   const loadProjects = async () => {
     setIsLoading(true);
@@ -242,6 +265,59 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            {/* Sync Status Indicator */}
+            {isSupabaseConfigured && user && (
+              <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-mono uppercase tracking-widest">
+                {syncStatus === 'syncing' && (
+                  <>
+                    <RefreshCw className="w-3 h-3 text-[var(--accent-text)] animate-spin" />
+                    <span className="text-[var(--accent-text)]">同步中</span>
+                  </>
+                )}
+                {syncStatus === 'synced' && (
+                  <>
+                    <Cloud className="w-3 h-3 text-[var(--success)]" />
+                    <span className="text-[var(--success)]">已同步</span>
+                  </>
+                )}
+                {syncStatus === 'error' && (
+                  <>
+                    <CloudOff className="w-3 h-3 text-[var(--error)]" />
+                    <span className="text-[var(--error)]">同步失败</span>
+                  </>
+                )}
+                {syncStatus === 'offline' && (
+                  <>
+                    <CloudOff className="w-3 h-3 text-[var(--text-muted)]" />
+                    <span className="text-[var(--text-muted)]">离线</span>
+                  </>
+                )}
+                {syncStatus === 'idle' && (
+                  <>
+                    <Cloud className="w-3 h-3 text-[var(--text-muted)]" />
+                    <span className="text-[var(--text-muted)]">云端</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* User Info & Logout */}
+            {isSupabaseConfigured && user && (
+              <div className="flex items-center gap-2 px-3 py-2 border border-[var(--border-primary)] text-[var(--text-tertiary)]">
+                <User className="w-3 h-3" />
+                <span className="text-[10px] font-mono truncate max-w-[120px]">
+                  {profile?.display_name || user.email?.split('@')[0] || 'User'}
+                </span>
+                <button
+                  onClick={handleSignOut}
+                  className="ml-1 p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors rounded-sm"
+                  title="退出登录"
+                >
+                  <LogOut className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
             <button
               onClick={() => setShowGroupQr(true)}
               className="group flex items-center gap-2 px-4 py-3 border border-[var(--border-primary)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-secondary)] transition-colors"

@@ -8,15 +8,18 @@ import StagePrompts from './components/StagePrompts';
 import Dashboard from './components/Dashboard';
 import Onboarding, { shouldShowOnboarding, resetOnboarding } from './components/Onboarding';
 import ModelConfigModal from './components/ModelConfig';
+import LoginPage from './components/Auth/LoginPage';
 import { ProjectState } from './types';
-import { Save, CheckCircle, X } from 'lucide-react';
+import { Save, CheckCircle, X, Loader2 } from 'lucide-react';
 import { saveProjectToDB } from './services/storageService';
 import { setGlobalApiKey } from './services/aiService';
 import { setLogCallback, clearLogCallback } from './services/renderLogService';
 import { useAlert } from './components/GlobalAlert';
+import { useAuth } from './contexts/AuthContext';
 import logoImg from './logo.png';
 
 function App() {
+  const { user, loading: authLoading, isConfigured: isSupabaseConfigured } = useAuth();
   const { showAlert } = useAlert();
   const [project, setProject] = useState<ProjectState | null>(null);
   const [apiKey, setApiKey] = useState<string>('');
@@ -271,6 +274,23 @@ function App() {
         return <div className="text-[var(--text-primary)]">未知阶段</div>;
     }
   };
+
+  // Auth Loading Screen
+  if (isSupabaseConfigured && authLoading) {
+    return (
+      <div className="h-screen bg-[var(--bg-base)] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 text-[var(--text-muted)] animate-spin mx-auto" />
+          <p className="text-sm text-[var(--text-tertiary)]">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Auth Gate: require login when Supabase is configured
+  if (isSupabaseConfigured && !user) {
+    return <LoginPage />;
+  }
 
   // Mobile Warning Screen
   if (isMobile) {
