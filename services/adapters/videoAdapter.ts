@@ -1,11 +1,12 @@
 /**
  * 视频模型适配器
- * 处理 Veo（同步）和 Sora（异步）API
+ * 处理 Veo（同步）、Sora（异步）和即梦反代 API
  */
 
 import { VideoModelDefinition, VideoGenerateOptions, AspectRatio, VideoDuration } from '../../types/model';
 import { getApiKeyForModel, getApiBaseUrlForModel, getActiveVideoModel } from '../modelRegistry';
 import { ApiKeyError } from './chatAdapter';
+import { isJimengVideoModel, callJimengVideoApi } from './jimengVideoAdapter';
 
 /**
  * 重试操作
@@ -444,6 +445,7 @@ const callSoraApi = async (
 
 /**
  * 调用视频生成 API
+ * 自动根据模型提供商路由到对应的适配器
  */
 export const callVideoApi = async (
   options: VideoGenerateOptions,
@@ -453,6 +455,11 @@ export const callVideoApi = async (
   const activeModel = model || getActiveVideoModel();
   if (!activeModel) {
     throw new Error('没有可用的视频模型');
+  }
+
+  // 即梦模型路由
+  if (isJimengVideoModel(activeModel)) {
+    return callJimengVideoApi(options, activeModel);
   }
 
   // 获取 API 配置

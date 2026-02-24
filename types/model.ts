@@ -14,18 +14,21 @@ export type ModelType = 'chat' | 'image' | 'video';
 
 /**
  * 横竖屏比例类型
+ * 包含即梦支持的额外比例
  */
-export type AspectRatio = '16:9' | '9:16' | '1:1';
+export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3' | '3:4' | '3:2' | '2:3' | '21:9';
 
 /**
- * 视频时长类型（仅异步视频模式支持）
+ * 视频时长类型
+ * 包含即梦支持的额外时长 (5/10/12/15)
  */
-export type VideoDuration = 4 | 8 | 12;
+export type VideoDuration = 4 | 5 | 8 | 10 | 12 | 15;
 
 /**
  * 视频生成模式
+ * jimeng = 即梦反代（同步等待服务端轮询）
  */
-export type VideoMode = 'sync' | 'async';
+export type VideoMode = 'sync' | 'async' | 'jimeng';
 
 // ============================================
 // 模型参数配置
@@ -48,17 +51,23 @@ export interface ChatModelParams {
 export interface ImageModelParams {
   defaultAspectRatio: AspectRatio;
   supportedAspectRatios: AspectRatio[];
+  // 即梦扩展参数（可选）
+  resolution?: string;             // 即梦分辨率：'1k' | '2k' | '4k'
+  negativePrompt?: string;         // 默认反向提示词
+  sampleStrength?: number;         // 采样强度 0.0-1.0
 }
 
 /**
  * 视频模型参数
  */
 export interface VideoModelParams {
-  mode: VideoMode;                        // sync=Veo, async=Sora
+  mode: VideoMode;                        // sync=Veo, async=Sora, jimeng=即梦反代
   defaultAspectRatio: AspectRatio;
   supportedAspectRatios: AspectRatio[];
   defaultDuration: VideoDuration;
   supportedDurations: VideoDuration[];
+  // 即梦扩展参数（可选）
+  resolution?: string;                    // 即梦视频分辨率：'720p' | '1080p'
 }
 
 /**
@@ -243,6 +252,51 @@ export const DEFAULT_VIDEO_PARAMS_VEO_FAST: VideoModelParams = {
   supportedDurations: [8],
 };
 
+/**
+ * 默认即梦图片模型参数
+ */
+export const DEFAULT_IMAGE_PARAMS_JIMENG: ImageModelParams = {
+  defaultAspectRatio: '1:1',
+  supportedAspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'],
+  resolution: '2k',
+};
+
+/**
+ * 默认即梦视频模型参数
+ */
+export const DEFAULT_VIDEO_PARAMS_JIMENG: VideoModelParams = {
+  mode: 'jimeng',
+  defaultAspectRatio: '16:9',
+  supportedAspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '21:9'],
+  defaultDuration: 5,
+  supportedDurations: [5, 10],
+  resolution: '1080p',
+};
+
+/**
+ * 即梦视频 Seedance 2.0 参数
+ */
+export const DEFAULT_VIDEO_PARAMS_JIMENG_SEEDANCE: VideoModelParams = {
+  mode: 'jimeng',
+  defaultAspectRatio: '16:9',
+  supportedAspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '21:9'],
+  defaultDuration: 5,
+  supportedDurations: [4, 5, 8, 10, 12, 15],
+  resolution: '1080p',
+};
+
+/**
+ * 即梦视频 3.5-pro 参数
+ */
+export const DEFAULT_VIDEO_PARAMS_JIMENG_35PRO: VideoModelParams = {
+  mode: 'jimeng',
+  defaultAspectRatio: '16:9',
+  supportedAspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '21:9'],
+  defaultDuration: 5,
+  supportedDurations: [5, 10, 12],
+  resolution: '1080p',
+};
+
 // ============================================
 // 内置模型定义
 // ============================================
@@ -308,6 +362,31 @@ export const BUILTIN_IMAGE_MODELS: ImageModelDefinition[] = [
     isEnabled: true,
     params: { ...DEFAULT_IMAGE_PARAMS },
   },
+  // ---- 即梦图片模型 ----
+  {
+    id: 'jimeng-5.0',
+    apiModel: 'jimeng-5.0',
+    name: '即梦 5.0',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '即梦 5.0 文生图（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG },
+  },
+  {
+    id: 'jimeng-4.5',
+    apiModel: 'jimeng-4.5',
+    name: '即梦 4.5',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '即梦 4.5 文生图（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG },
+  },
 ];
 
 /**
@@ -347,6 +426,43 @@ export const BUILTIN_VIDEO_MODELS: VideoModelDefinition[] = [
     isEnabled: true,
     params: { ...DEFAULT_VIDEO_PARAMS_SORA },
   },
+  // ---- 即梦视频模型 ----
+  {
+    id: 'jimeng-video-seedance-2.0',
+    apiModel: 'jimeng-video-seedance-2.0',
+    name: '即梦 Seedance 2.0',
+    type: 'video',
+    providerId: 'jimeng',
+    endpoint: '/v1/videos/generations',
+    description: '即梦 Seedance 2.0 视频生成，支持全能模式（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_VIDEO_PARAMS_JIMENG_SEEDANCE },
+  },
+  {
+    id: 'jimeng-video-3.5-pro',
+    apiModel: 'jimeng-video-3.5-pro',
+    name: '即梦视频 3.5 Pro',
+    type: 'video',
+    providerId: 'jimeng',
+    endpoint: '/v1/videos/generations',
+    description: '即梦视频 3.5 Pro（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_VIDEO_PARAMS_JIMENG_35PRO },
+  },
+  {
+    id: 'jimeng-video-3.0',
+    apiModel: 'jimeng-video-3.0',
+    name: '即梦视频 3.0',
+    type: 'video',
+    providerId: 'jimeng',
+    endpoint: '/v1/videos/generations',
+    description: '即梦视频 3.0（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_VIDEO_PARAMS_JIMENG },
+  },
 ];
 
 /**
@@ -359,6 +475,13 @@ export const BUILTIN_PROVIDERS: ModelProvider[] = [
     baseUrl: 'https://api.antsk.cn',
     isBuiltIn: true,
     isDefault: true,
+  },
+  {
+    id: 'jimeng',
+    name: '即梦反代 (Jimeng API)',
+    baseUrl: 'http://localhost:5100',
+    isBuiltIn: true,
+    isDefault: false,
   },
 ];
 

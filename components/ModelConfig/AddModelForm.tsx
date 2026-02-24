@@ -15,6 +15,7 @@ import {
   DEFAULT_IMAGE_PARAMS,
   DEFAULT_VIDEO_PARAMS_SORA,
   DEFAULT_VIDEO_PARAMS_VEO,
+  DEFAULT_VIDEO_PARAMS_JIMENG,
 } from '../../types/model';
 import { getProviders, addProvider } from '../../services/modelRegistry';
 import { useAlert } from '../GlobalAlert';
@@ -34,7 +35,7 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
   const [description, setDescription] = useState('');
   const [endpoint, setEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [videoMode, setVideoMode] = useState<'sync' | 'async'>('sync');
+  const [videoMode, setVideoMode] = useState<'sync' | 'async' | 'jimeng'>('sync');
   
   // 提供商配置
   const [providerMode, setProviderMode] = useState<'existing' | 'custom'>('existing');
@@ -79,9 +80,11 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
     } else if (type === 'image') {
       params = { ...DEFAULT_IMAGE_PARAMS };
     } else {
-      params = videoMode === 'async' 
-        ? { ...DEFAULT_VIDEO_PARAMS_SORA }
-        : { ...DEFAULT_VIDEO_PARAMS_VEO };
+      params = videoMode === 'jimeng'
+        ? { ...DEFAULT_VIDEO_PARAMS_JIMENG }
+        : videoMode === 'async' 
+          ? { ...DEFAULT_VIDEO_PARAMS_SORA }
+          : { ...DEFAULT_VIDEO_PARAMS_VEO };
     }
 
     const model: Omit<ModelDefinition, 'id' | 'isBuiltIn'> = {
@@ -261,7 +264,7 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
                   : 'bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:bg-[var(--border-secondary)]'
               }`}
             >
-              同步模式（Chat Completion 类）
+              同步（Veo 类）
             </button>
             <button
               onClick={() => setVideoMode('async')}
@@ -271,11 +274,21 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
                   : 'bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:bg-[var(--border-secondary)]'
               }`}
             >
-              异步模式（Sora 类）
+              异步（Sora 类）
+            </button>
+            <button
+              onClick={() => setVideoMode('jimeng')}
+              className={`flex-1 py-2 text-xs rounded transition-colors ${
+                videoMode === 'jimeng'
+                  ? 'bg-[var(--accent)] text-[var(--text-primary)]'
+                  : 'bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:bg-[var(--border-secondary)]'
+              }`}
+            >
+              即梦反代
             </button>
           </div>
           <p className="text-[9px] text-[var(--text-muted)] mt-1">
-            同步模式：直接返回结果；异步模式：先创建任务，再轮询获取结果
+            同步模式：直接返回结果；异步模式：先创建任务再轮询；即梦反代：通过即梦反代服务生成
           </p>
         </div>
       )}

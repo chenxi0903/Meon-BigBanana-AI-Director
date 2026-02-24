@@ -1,11 +1,12 @@
 /**
  * 图片模型适配器
- * 处理 Gemini Image API
+ * 处理 Gemini Image API，支持即梦反代路由分发
  */
 
 import { ImageModelDefinition, ImageGenerateOptions, AspectRatio } from '../../types/model';
 import { getApiKeyForModel, getApiBaseUrlForModel, getActiveImageModel } from '../modelRegistry';
 import { ApiKeyError } from './chatAdapter';
+import { isJimengImageModel, callJimengImageApi } from './jimengImageAdapter';
 
 /**
  * 重试操作
@@ -39,6 +40,7 @@ const retryOperation = async <T>(
 
 /**
  * 调用图片生成 API
+ * 自动根据模型提供商路由到对应的适配器
  */
 export const callImageApi = async (
   options: ImageGenerateOptions,
@@ -48,6 +50,11 @@ export const callImageApi = async (
   const activeModel = model || getActiveImageModel();
   if (!activeModel) {
     throw new Error('没有可用的图片模型');
+  }
+
+  // 即梦模型路由
+  if (isJimengImageModel(activeModel)) {
+    return callJimengImageApi(options, activeModel);
   }
 
   // 获取 API 配置

@@ -16,6 +16,8 @@ import {
   getVeoModelName,
   getSoraVideoSize,
 } from './apiCore';
+import { isJimengVideoModel, callJimengVideoApi } from '../adapters/jimengVideoAdapter';
+import { VideoModelDefinition } from '../../types/model';
 
 // ============================================
 // 异步视频生成
@@ -275,6 +277,23 @@ export const generateVideo = async (
   duration: VideoDuration = 8
 ): Promise<string> => {
   const resolvedVideoModel = resolveModel('video', model);
+
+  // ---- 即梦视频模型路由 ----
+  if (resolvedVideoModel && isJimengVideoModel(resolvedVideoModel as VideoModelDefinition)) {
+    console.log(`🎬 使用即梦视频模型: ${resolvedVideoModel.apiModel || resolvedVideoModel.id}`);
+    return callJimengVideoApi(
+      {
+        prompt,
+        startImage: startImageBase64,
+        endImage: endImageBase64,
+        aspectRatio,
+        duration,
+      },
+      resolvedVideoModel as VideoModelDefinition
+    );
+  }
+
+  // ---- 原有 Veo/Sora 流程 ----
   const requestModel = resolveRequestModel('video', model) || model;
   const apiKey = checkApiKey('video', model);
   const apiBase = getApiBase('video', model);

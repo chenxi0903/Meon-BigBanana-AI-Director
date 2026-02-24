@@ -15,6 +15,8 @@ import {
   resolveModel,
   logScriptProgress,
 } from './apiCore';
+import { isJimengImageModel, callJimengImageApi } from '../adapters/jimengImageAdapter';
+import { ImageModelDefinition } from '../../types/model';
 import {
   getStylePrompt,
   getNegativePrompt,
@@ -396,6 +398,47 @@ export const generateImage = async (
   const startTime = Date.now();
 
   const activeImageModel = getActiveModel('image');
+
+  // ---- 即梦图片模型路由 ----
+  if (activeImageModel && isJimengImageModel(activeImageModel as ImageModelDefinition)) {
+    const imageModelId = activeImageModel.apiModel || activeImageModel.id;
+    try {
+      const result = await callJimengImageApi(
+        {
+          prompt,
+          referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+          aspectRatio,
+        },
+        activeImageModel as ImageModelDefinition
+      );
+
+      addRenderLogWithTokens({
+        type: 'keyframe',
+        resourceId: 'image-' + Date.now(),
+        resourceName: prompt.substring(0, 50) + '...',
+        status: 'success',
+        model: imageModelId,
+        prompt: prompt,
+        duration: Date.now() - startTime,
+      });
+
+      return result;
+    } catch (error: any) {
+      addRenderLogWithTokens({
+        type: 'keyframe',
+        resourceId: 'image-' + Date.now(),
+        resourceName: prompt.substring(0, 50) + '...',
+        status: 'failed',
+        model: imageModelId,
+        prompt: prompt,
+        error: error.message,
+        duration: Date.now() - startTime,
+      });
+      throw error;
+    }
+  }
+
+  // ---- 原有 Gemini 流程 ----
   const imageModelId = activeImageModel?.apiModel || activeImageModel?.id || 'gemini-3-pro-image-preview';
   const imageModelEndpoint = activeImageModel?.endpoint || `/v1beta/models/${imageModelId}:generateContent`;
   const apiKey = checkApiKey('image', activeImageModel?.id);
