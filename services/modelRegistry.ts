@@ -64,6 +64,14 @@ export const loadRegistry = (): ModelRegistryState => {
         'veo_3_1_i2v_s_fast_fl_landscape',
         'veo_3_1_i2v_s_fast_fl_portrait',
       ];
+      const deprecatedChatModelIds = [
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+        'gemini-2.0-flash-exp',
+        'gemini-2.0-flash',
+        'gemini-2.0',
+        'deepseek-coder',
+      ];
       
       // 确保内置模型和提供商始终存在
       const builtInProviderIds = BUILTIN_PROVIDERS.map(p => p.id);
@@ -127,9 +135,11 @@ export const loadRegistry = (): ModelRegistryState => {
 
       // 清理旧的已废弃视频模型
       const modelCountBefore = parsed.models.length;
-      parsed.models = parsed.models.filter(
-        m => !(m.type === 'video' && deprecatedVideoModelIds.includes(m.id))
-      );
+      parsed.models = parsed.models.filter(m => {
+        if (m.type === 'video' && deprecatedVideoModelIds.includes(m.id)) return false;
+        if (m.type === 'chat' && deprecatedChatModelIds.includes(m.id)) return false;
+        return true;
+      });
       const modelsRemoved = modelCountBefore - parsed.models.length;
 
       // 迁移激活视频模型
@@ -140,6 +150,10 @@ export const loadRegistry = (): ModelRegistryState => {
         parsed.activeModels.video?.startsWith('veo_3_1_')
       ) {
         parsed.activeModels.video = 'veo';
+        activeModelMigrated = true;
+      }
+      if (deprecatedChatModelIds.includes(parsed.activeModels.chat)) {
+        parsed.activeModels.chat = DEFAULT_ACTIVE_MODELS.chat;
         activeModelMigrated = true;
       }
       
