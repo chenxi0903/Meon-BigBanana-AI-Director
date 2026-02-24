@@ -251,7 +251,7 @@ export interface ModelProvider {
   id: string;
   name: string;
   baseUrl: string;  // API 基础 URL，如 'https://api.antsk.cn'
-  apiKey?: string;  // 可选的独立 API Key（如果不设置则使用全局 API Key）
+  apiKey?: string;  // 可选的独立 API Key（如果不设置则使用提供商 API Key）
   isDefault?: boolean;  // 是否为默认提供商
   isBuiltIn?: boolean;  // 是否为内置提供商（不可删除）
 }

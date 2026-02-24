@@ -164,11 +164,11 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="留空则使用全局 API Key"
+            placeholder="留空则使用提供商 API Key"
             className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] rounded px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-mono"
           />
           <p className="text-[9px] text-[var(--text-muted)] mt-1">
-            为此模型单独配置 API Key，留空则使用全局配置的 Key
+            为此模型单独配置 API Key，留空则使用提供商配置的 Key
           </p>
         </div>
       )}

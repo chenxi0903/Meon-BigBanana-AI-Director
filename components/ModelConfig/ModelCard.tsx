@@ -247,13 +247,13 @@ const ModelCard: React.FC<ModelCardProps> = ({
             {/* 模型专属 API Key */}
             <div>
               <label className="text-[10px] text-[var(--text-tertiary)] block mb-1">
-                API Key（留空使用全局 Key）
+                API Key（留空使用提供商 Key）
               </label>
               <input
                 type="password"
                 value={editApiKey}
                 onChange={(e) => handleApiKeyChange(e.target.value)}
-                placeholder="留空则使用全局 API Key"
+                placeholder="留空则使用提供商 API Key"
                 className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] rounded px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-mono"
               />
               {model.apiKey && (
