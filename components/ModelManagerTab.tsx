@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Server, 
   MessageSquare, 
@@ -53,6 +53,21 @@ const ModelManagerTab: React.FC<ModelManagerTabProps> = ({ onConfigChange }) => 
   const [editForm, setEditForm] = useState({ name: '', baseUrl: '', apiKey: '' });
   const [isAddingProvider, setIsAddingProvider] = useState(false);
   const [newProviderForm, setNewProviderForm] = useState({ name: '', baseUrl: '', apiKey: '' });
+  const editApiKeyInputRef = useRef<HTMLInputElement>(null);
+  const newProviderApiKeyInputRef = useRef<HTMLInputElement>(null);
+
+  // 处理粘贴事件后恢复焦点
+  const handlePaste = (ref: React.RefObject<HTMLInputElement>) => {
+    return (e: React.ClipboardEvent<HTMLInputElement>) => {
+      setTimeout(() => {
+        if (ref.current) {
+          ref.current.focus();
+          const length = ref.current.value.length;
+          ref.current.setSelectionRange(length, length);
+        }
+      }, 0);
+    };
+  };
 
   // 加载配置
   useEffect(() => {
@@ -225,10 +240,12 @@ const ModelManagerTab: React.FC<ModelManagerTabProps> = ({ onConfigChange }) => 
                 className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] text-[var(--text-primary)] px-3 py-2 text-xs rounded focus:border-[var(--accent)] focus:outline-none font-mono"
               />
               <input
+                ref={newProviderApiKeyInputRef}
                 type="password"
                 placeholder="独立 API Key（可选，不填则使用全局 Key）"
                 value={newProviderForm.apiKey}
                 onChange={(e) => setNewProviderForm({ ...newProviderForm, apiKey: e.target.value })}
+                onPaste={handlePaste(newProviderApiKeyInputRef)}
                 className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] text-[var(--text-primary)] px-3 py-2 text-xs rounded focus:border-[var(--accent)] focus:outline-none font-mono"
               />
               <div className="flex gap-2">
@@ -279,10 +296,12 @@ const ModelManagerTab: React.FC<ModelManagerTabProps> = ({ onConfigChange }) => 
                     disabled={provider.isBuiltIn}
                   />
                   <input
+                    ref={editApiKeyInputRef}
                     type="password"
                     placeholder="独立 API Key（可选）"
                     value={editForm.apiKey}
                     onChange={(e) => setEditForm({ ...editForm, apiKey: e.target.value })}
+                    onPaste={handlePaste(editApiKeyInputRef)}
                     className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] text-[var(--text-primary)] px-3 py-2 text-xs rounded focus:border-[var(--accent)] focus:outline-none font-mono"
                   />
                   <div className="flex gap-2">
