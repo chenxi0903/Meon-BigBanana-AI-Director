@@ -118,16 +118,6 @@ This project deeply integrates [**AntSK API Platform**](https://api.antsk.cn/), 
 
 ---
 
-## 💬 Join Our Community
-
-Scan the QR code to join our **BigBanana Product Experience Group** on WeChat. Connect with fellow creators, share tips, and get the latest updates:
-
-<div align="center">
-<img src="./images/qrcode.jpg" width="300" alt="WeChat Group QR Code">
-<p><i>Scan to join WeChat group</i></p>
-</div>
-
----
 
 ### 🎨 Lightweight Creation Tools
 

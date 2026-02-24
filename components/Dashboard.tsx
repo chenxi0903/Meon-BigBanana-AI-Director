@@ -7,7 +7,6 @@ import { useAlert } from './GlobalAlert';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeSyncStatus, SyncStatus } from '../services/supabase/syncService';
-import qrCodeImg from '../images/qrcode.jpg';
 
 interface Props {
   onOpenProject: (project: ProjectState) => void;
@@ -22,7 +21,6 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
   const [projects, setProjects] = useState<ProjectState[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [showGroupQr, setShowGroupQr] = useState(false);
   const [libraryItems, setLibraryItems] = useState<AssetLibraryItem[]>([]);
   const [isLibraryLoading, setIsLibraryLoading] = useState(true);
   const [libraryQuery, setLibraryQuery] = useState('');
@@ -318,13 +316,6 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
               </div>
             )}
 
-            <button
-              onClick={() => setShowGroupQr(true)}
-              className="group flex items-center gap-2 px-4 py-3 border border-[var(--border-primary)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-secondary)] transition-colors"
-              title="加入交流群"
-            >
-              <span className="font-medium text-xs tracking-widest uppercase">交流群</span>
-            </button>
             {onShowOnboarding && (
               <button 
                 onClick={onShowOnboarding}
@@ -464,32 +455,6 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
           </div>
         )}
       </div>
-
-      {/* Group QR Modal */}
-      {showGroupQr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-base)]/70 p-6" onClick={() => setShowGroupQr(false)}>
-          <div
-            className="relative w-full max-w-md bg-[var(--bg-primary)] border border-[var(--border-primary)] p-6 md:p-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowGroupQr(false)}
-              className="absolute right-4 top-4 p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-              title="关闭"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="space-y-4 text-center">
-              <div className="text-[var(--text-primary)] text-sm font-bold tracking-widest uppercase">加入交流群</div>
-              <div className="text-[10px] text-[var(--text-tertiary)] font-mono">扫码进入产品体验群</div>
-              <div className="inline-block">
-                <img src={qrCodeImg} alt="交流群二维码" className="w-64 h-64 object-contain" />
-              </div>
-              <div className="text-[10px] text-[var(--text-muted)] font-mono">二维码有效期请以实际为准</div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Settings Modal */}
       {showSettingsModal && (
