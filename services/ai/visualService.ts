@@ -9,13 +9,12 @@ import {
   retryOperation,
   cleanJsonString,
   chatCompletion,
-  checkApiKey,
-  getApiBase,
   getActiveModel,
   resolveModel,
   logScriptProgress,
 } from './apiCore';
 import { isJimengImageModel, callJimengImageApi } from '../adapters/jimengImageAdapter';
+import { callImageApi } from '../adapters/imageAdapter';
 import { ImageModelDefinition } from '../../types/model';
 import {
   getStylePrompt,
@@ -311,11 +310,7 @@ export const generateImage = async (
     }
   }
 
-  // ---- 原有 Gemini 流程 ----
   const imageModelId = activeImageModel?.apiModel || activeImageModel?.id || 'gemini-3-pro-image-preview';
-  const imageModelEndpoint = activeImageModel?.endpoint || `/v1beta/models/${imageModelId}:generateContent`;
-  const apiKey = checkApiKey('image', activeImageModel?.id);
-  const apiBase = getApiBase('image', activeImageModel?.id);
 
   try {
     let finalPrompt = prompt;
@@ -327,91 +322,26 @@ export const generateImage = async (
       }
     }
 
-    const parts: any[] = [{ text: finalPrompt }];
+    const result = await callImageApi(
+      {
+        prompt: finalPrompt,
+        referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+        aspectRatio,
+      },
+      activeImageModel as ImageModelDefinition | undefined
+    );
 
-    referenceImages.forEach((imgUrl) => {
-      const match = imgUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
-      if (match) {
-        parts.push({
-          inlineData: {
-            mimeType: match[1],
-            data: match[2]
-          }
-        });
-      }
+    addRenderLogWithTokens({
+      type: 'keyframe',
+      resourceId: 'image-' + Date.now(),
+      resourceName: prompt.substring(0, 50) + '...',
+      status: 'success',
+      model: imageModelId,
+      prompt: prompt,
+      duration: Date.now() - startTime
     });
 
-    const requestBody: any = {
-      contents: [{
-        role: "user",
-        parts: parts
-      }],
-      generationConfig: {
-        responseModalities: ["TEXT", "IMAGE"]
-      }
-    };
-
-    if (aspectRatio !== '16:9') {
-      requestBody.generationConfig.imageConfig = {
-        aspectRatio: aspectRatio
-      };
-    }
-
-    const response = await retryOperation(async () => {
-      const res = await fetch(`${apiBase}${imageModelEndpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'Accept': '*/*'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!res.ok) {
-        if (res.status === 400) {
-          throw new Error('提示词可能包含不安全或违规内容，未能处理。请修改后重试。');
-        }
-        else if (res.status === 500) {
-          throw new Error('当前请求较多，暂时未能处理成功，请稍后重试。');
-        }
-
-        let errorMessage = `HTTP错误: ${res.status}`;
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.error?.message || errorMessage;
-        } catch (e) {
-          const errorText = await res.text();
-          if (errorText) errorMessage = errorText;
-        }
-        throw new Error(errorMessage);
-      }
-
-      return await res.json();
-    });
-
-    const candidates = response.candidates || [];
-    if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
-      for (const part of candidates[0].content.parts) {
-        if (part.inlineData) {
-          const result = `data:image/png;base64,${part.inlineData.data}`;
-
-          addRenderLogWithTokens({
-            type: 'keyframe',
-            resourceId: 'image-' + Date.now(),
-            resourceName: prompt.substring(0, 50) + '...',
-            status: 'success',
-            model: imageModelId,
-            prompt: prompt,
-            duration: Date.now() - startTime
-          });
-
-          return result;
-        }
-      }
-    }
-
-    throw new Error("图片生成失败 (No image data returned)");
+    return result;
   } catch (error: any) {
     addRenderLogWithTokens({
       type: 'keyframe',
