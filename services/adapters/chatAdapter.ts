@@ -71,8 +71,13 @@ export const callChatApi = async (
     throw new Error('没有可用的对话模型');
   }
 
-  // 根据 providerId 路由到不同的适配器
-  if (activeModel.providerId === 'google') {
+  // 获取 API Base URL 用于路由判断
+  const apiBase = getApiBaseUrlForModel(activeModel.id);
+
+  // 根据 providerId 或 URL 特征路由到不同的适配器
+  // 如果 URL 包含 generativelanguage.googleapis.com，强制使用 Google SDK 适配器
+  // 这样可以避免浏览器直接调用 OpenAI 兼容接口时的 CORS 问题
+  if (activeModel.providerId === 'google' || apiBase.includes('generativelanguage.googleapis.com')) {
     return callGoogleGenAiChatApi(options, activeModel);
   }
   
@@ -87,7 +92,6 @@ export const callChatApi = async (
     throw new ApiKeyError('API Key 缺失，请在设置中配置 API Key');
   }
   
-  const apiBase = getApiBaseUrlForModel(activeModel.id);
   const endpoint = activeModel.endpoint || '/v1/chat/completions';
   const apiModel = activeModel.apiModel || activeModel.id;
   
