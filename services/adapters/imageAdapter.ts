@@ -3,6 +3,7 @@
  * 处理 Gemini Image API，支持即梦反代路由分发
  */
 
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ImageModelDefinition, ImageGenerateOptions, AspectRatio } from '../../types/model';
 import { getApiKeyForModel, getApiBaseUrlForModel, getActiveImageModel } from '../modelRegistry';
 import { ApiKeyError } from './chatAdapter';
@@ -38,42 +39,13 @@ const retryOperation = async <T>(
   throw lastError;
 };
 
-/**
- * 调用图片生成 API
- * 自动根据模型提供商路由到对应的适配器
- */
-export const callImageApi = async (
+const buildImageGenerationRequest = (
   options: ImageGenerateOptions,
-  model?: ImageModelDefinition
-): Promise<string> => {
-  // 获取当前激活的模型
-  const activeModel = model || getActiveImageModel();
-  if (!activeModel) {
-    throw new Error('没有可用的图片模型');
-  }
-
-  // 即梦模型路由
-  if (isJimengImageModel(activeModel)) {
-    return callJimengImageApi(options, activeModel);
-  }
-
-  // 获取 API 配置
-  const apiKey = getApiKeyForModel(activeModel.id);
-  if (!apiKey) {
-    throw new ApiKeyError('API Key 缺失，请在设置中配置 API Key');
-  }
-  
-  const apiBase = getApiBaseUrlForModel(activeModel.id);
-  const apiModel = activeModel.apiModel || activeModel.id;
-  const endpoint = activeModel.endpoint || `/v1beta/models/${apiModel}:generateContent`;
-  
-  // 确定宽高比
-  const aspectRatio = options.aspectRatio || activeModel.params.defaultAspectRatio;
-  
-  // 构建提示词
+  model: ImageModelDefinition
+) => {
+  const aspectRatio = options.aspectRatio || model.params.defaultAspectRatio;
   let finalPrompt = options.prompt;
-  
-  // 如果有参考图，添加一致性指令
+
   if (options.referenceImages && options.referenceImages.length > 0) {
     finalPrompt = `
       ⚠️⚠️⚠️ CRITICAL REQUIREMENTS - CHARACTER CONSISTENCY ⚠️⚠️⚠️
@@ -101,10 +73,8 @@ export const callImageApi = async (
     `;
   }
 
-  // 构建请求 parts
   const parts: any[] = [{ text: finalPrompt }];
 
-  // 添加参考图片
   if (options.referenceImages) {
     options.referenceImages.forEach((imgUrl) => {
       const match = imgUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
@@ -119,23 +89,104 @@ export const callImageApi = async (
     });
   }
 
-  // 构建请求体
+  const generationConfig: any = {
+    responseModalities: ['TEXT', 'IMAGE'],
+  };
+
+  if (aspectRatio !== '16:9') {
+    generationConfig.imageConfig = {
+      aspectRatio: aspectRatio,
+    };
+  }
+
+  return { parts, generationConfig };
+};
+
+const extractInlineImage = (response: any): string | null => {
+  const candidates = response?.candidates || [];
+  for (const candidate of candidates) {
+    const parts = candidate?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+  }
+  return null;
+};
+
+const callGoogleGenAiImageApi = async (
+  options: ImageGenerateOptions,
+  model: ImageModelDefinition,
+  apiKey: string
+): Promise<string> => {
+  const apiModel = model.apiModel || model.id;
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const genModel = genAI.getGenerativeModel({ model: apiModel });
+  const { parts, generationConfig } = buildImageGenerationRequest(options, model);
+
+  try {
+    const result = await retryOperation(async () => {
+      return await genModel.generateContent({
+        contents: [{ role: 'user', parts }],
+        generationConfig,
+      });
+    });
+
+    const imageData = extractInlineImage(result.response);
+    if (imageData) {
+      return imageData;
+    }
+  } catch (error: any) {
+    if (error?.message) {
+      throw new Error(error.message);
+    }
+    throw error;
+  }
+
+  throw new Error('图片生成失败：未能从响应中提取图片数据');
+};
+
+/**
+ * 调用图片生成 API
+ * 自动根据模型提供商路由到对应的适配器
+ */
+export const callImageApi = async (
+  options: ImageGenerateOptions,
+  model?: ImageModelDefinition
+): Promise<string> => {
+  // 获取当前激活的模型
+  const activeModel = model || getActiveImageModel();
+  if (!activeModel) {
+    throw new Error('没有可用的图片模型');
+  }
+
+  // 即梦模型路由
+  if (isJimengImageModel(activeModel)) {
+    return callJimengImageApi(options, activeModel);
+  }
+
+  // 获取 API 配置
+  const apiKey = getApiKeyForModel(activeModel.id);
+  if (!apiKey) {
+    throw new ApiKeyError('API Key 缺失，请在设置中配置 API Key');
+  }
+  
+  if (activeModel.providerId === 'google') {
+    return callGoogleGenAiImageApi(options, activeModel, apiKey);
+  }
+
+  const apiBase = getApiBaseUrlForModel(activeModel.id);
+  const apiModel = activeModel.apiModel || activeModel.id;
+  const endpoint = activeModel.endpoint || `/v1beta/models/${apiModel}:generateContent`;
+  const { parts, generationConfig } = buildImageGenerationRequest(options, activeModel);
   const requestBody: any = {
     contents: [{
       role: 'user',
       parts: parts,
     }],
-    generationConfig: {
-      responseModalities: ['TEXT', 'IMAGE'],
-    },
+    generationConfig: generationConfig,
   };
-  
-  // 非默认宽高比需要添加 imageConfig
-  if (aspectRatio !== '16:9') {
-    requestBody.generationConfig.imageConfig = {
-      aspectRatio: aspectRatio,
-    };
-  }
 
   // 调用 API
   const response = await retryOperation(async () => {
@@ -171,14 +222,9 @@ export const callImageApi = async (
     return await res.json();
   });
 
-  // 提取 base64 图片
-  const candidates = response.candidates || [];
-  if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
-    for (const part of candidates[0].content.parts) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
-      }
-    }
+  const imageData = extractInlineImage(response);
+  if (imageData) {
+    return imageData;
   }
 
   throw new Error('图片生成失败：未能从响应中提取图片数据');

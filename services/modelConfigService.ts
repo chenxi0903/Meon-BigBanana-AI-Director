@@ -401,7 +401,8 @@ export const AVAILABLE_CHAT_MODELS = [
  * 预定义的画图模型列表
  */
 export const AVAILABLE_IMAGE_MODELS = [
-  { name: 'Gemini 3 Pro Image', value: 'gemini-3-pro-image-preview', description: '高质量图片生成' },
+  { name: 'Gemini 3 Pro Image Preview', value: 'gemini-3-pro-image-preview', description: '高质量图片生成' },
+  { name: 'Gemini 2.5 Flash Image (Nano Banana)', value: 'gemini-2.5-flash-image', description: '轻量快速图片生成' },
 ];
 
 /**
