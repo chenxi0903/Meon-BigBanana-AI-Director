@@ -23,9 +23,42 @@ import { syncSettingsToCloud, fetchSettingsFromCloud } from './supabase/settings
 // localStorage 键名
 const STORAGE_KEY = 'meon_model_registry';
 const JIMENG_GLOBAL_CONFIG_KEY = 'meon_jimeng_global_config';
+const LEGACY_MODEL_CONFIG_KEY = 'meon_model_config';
 
 // 规范化 URL（去尾部斜杠、转小写）用于去重
 const normalizeBaseUrl = (url: string): string => url.trim().replace(/\/+$/, '').toLowerCase();
+
+const mergeLegacyProviderApiKeys = (state: ModelRegistryState): boolean => {
+  try {
+    const stored = localStorage.getItem(LEGACY_MODEL_CONFIG_KEY);
+    if (!stored) return false;
+    const legacy = JSON.parse(stored) as any;
+    const legacyProviders: any[] = Array.isArray(legacy?.providers) ? legacy.providers : [];
+    if (!legacyProviders.length) return false;
+
+    const byId = new Map<string, any>();
+    const byBaseUrl = new Map<string, any>();
+    legacyProviders.forEach(p => {
+      if (p?.id) byId.set(p.id, p);
+      if (p?.baseUrl) byBaseUrl.set(normalizeBaseUrl(p.baseUrl), p);
+    });
+
+    let changed = false;
+    state.providers = state.providers.map(p => {
+      if (p.apiKey) return p;
+      const legacyProvider = byId.get(p.id) || byBaseUrl.get(normalizeBaseUrl(p.baseUrl));
+      if (legacyProvider?.apiKey) {
+        changed = true;
+        return { ...p, apiKey: legacyProvider.apiKey };
+      }
+      return p;
+    });
+    return changed;
+  } catch (e) {
+    console.error('迁移提供商 API Key 失败:', e);
+    return false;
+  }
+};
 
 // 运行时状态缓存
 let registryState: ModelRegistryState | null = null;
@@ -160,6 +193,8 @@ export const loadRegistry = (): ModelRegistryState => {
         seenBaseUrls.add(key);
         return true;
       });
+
+      const legacyMerged = mergeLegacyProviderApiKeys(parsed);
       
       // 合并内置模型，并确保内置模型的参数与代码保持同步
       const existingModelIds = parsed.models.map(m => m.id);
@@ -227,7 +262,7 @@ export const loadRegistry = (): ModelRegistryState => {
       registryState = parsed;
 
       // 如果发生了迁移，立即回写 localStorage，避免每次加载都重复执行
-      if (modelsRemoved > 0 || activeModelMigrated) {
+      if (modelsRemoved > 0 || activeModelMigrated || legacyMerged) {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
           console.log(`🔄 模型注册中心迁移完成：清理 ${modelsRemoved} 个废弃模型`);
