@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Database, Settings, Sun, Moon, Cloud, CloudOff, RefreshCw, LogOut, User } from 'lucide-react';
+import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Database, Settings, Sun, Moon, LogOut, User } from 'lucide-react';
 import { ProjectState, AssetLibraryItem, Character, Scene } from '../types';
 import { getAllProjectsMetadata, createNewProjectState, deleteProjectFromDB, getAllAssetLibraryItems, deleteAssetFromLibrary, loadProjectFromDB, saveProjectToDB, exportIndexedDBData, importIndexedDBData } from '../services/storageService';
 import { applyLibraryItemToProject } from '../services/assetLibraryService';
 import { useAlert } from './GlobalAlert';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { subscribeSyncStatus, SyncStatus } from '../services/supabase/syncService';
 
 interface Props {
   onOpenProject: (project: ProjectState) => void;
@@ -31,16 +30,7 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isDataExporting, setIsDataExporting] = useState(false);
   const [isDataImporting, setIsDataImporting] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const importInputRef = useRef<HTMLInputElement>(null);
-
-  // 订阅同步状态
-  useEffect(() => {
-    const unsubscribe = subscribeSyncStatus((status) => {
-      setSyncStatus(status);
-    });
-    return unsubscribe;
-  }, []);
 
   const handleSignOut = async () => {
     showAlert('确定要退出登录吗？', {
@@ -263,42 +253,6 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            {/* Sync Status Indicator */}
-            {isSupabaseConfigured && user && (
-              <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-mono uppercase tracking-widest">
-                {syncStatus === 'syncing' && (
-                  <>
-                    <RefreshCw className="w-3 h-3 text-[var(--accent-text)] animate-spin" />
-                    <span className="text-[var(--accent-text)]">同步中</span>
-                  </>
-                )}
-                {syncStatus === 'synced' && (
-                  <>
-                    <Cloud className="w-3 h-3 text-[var(--success)]" />
-                    <span className="text-[var(--success)]">已同步</span>
-                  </>
-                )}
-                {syncStatus === 'error' && (
-                  <>
-                    <CloudOff className="w-3 h-3 text-[var(--error)]" />
-                    <span className="text-[var(--error)]">同步失败</span>
-                  </>
-                )}
-                {syncStatus === 'offline' && (
-                  <>
-                    <CloudOff className="w-3 h-3 text-[var(--text-muted)]" />
-                    <span className="text-[var(--text-muted)]">离线</span>
-                  </>
-                )}
-                {syncStatus === 'idle' && (
-                  <>
-                    <Cloud className="w-3 h-3 text-[var(--text-muted)]" />
-                    <span className="text-[var(--text-muted)]">云端</span>
-                  </>
-                )}
-              </div>
-            )}
-
             {/* User Info & Logout */}
             {isSupabaseConfigured && user && (
               <div className="flex items-center gap-2 px-3 py-2 border border-[var(--border-primary)] text-[var(--text-tertiary)]">
