@@ -27,6 +27,8 @@ const LEGACY_MODEL_CONFIG_KEY = 'meon_model_config';
 
 // 规范化 URL（去尾部斜杠、转小写）用于去重
 const normalizeBaseUrl = (url: string): string => url.trim().replace(/\/+$/, '').toLowerCase();
+const normalizeApiKey = (value: string): string =>
+  value.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, '').replace(/[^\x00-\xFF]/g, '');
 
 const mergeLegacyProviderApiKeys = (state: ModelRegistryState): boolean => {
   try {
@@ -627,19 +629,22 @@ export const getApiKeyForModel = (modelId: string): string | undefined => {
   if (isJimengModel(model)) {
     const globalConfig = getJimengGlobalConfig();
     if (globalConfig.sessionToken) {
-      return globalConfig.sessionToken;
+      const normalized = normalizeApiKey(globalConfig.sessionToken);
+      return normalized || undefined;
     }
   }
   
   // 1. 优先使用模型专属 API Key
   if (model.apiKey) {
-    return model.apiKey;
+    const normalized = normalizeApiKey(model.apiKey);
+    return normalized || undefined;
   }
   
   // 2. 其次使用提供商的 API Key
   const provider = getProviderById(model.providerId);
   if (provider?.apiKey) {
-    return provider.apiKey;
+    const normalized = normalizeApiKey(provider.apiKey);
+    return normalized || undefined;
   }
   
   return undefined;
