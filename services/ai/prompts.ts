@@ -801,8 +801,8 @@ Return a valid JSON object:
 }\`;
 };
 
-export const buildScriptContinuationPrompt = (existingScript: string, language: string): string => 
-  \`你是一位资深剧本创作者。请在充分理解下方已有剧本内容的基础上，续写后续情节。
+export const buildScriptContinuationPrompt = (existingScript: string, language: string): string => {
+  return `你是一位资深剧本创作者。请在充分理解下方已有剧本内容的基础上，续写后续情节。
 
 续写要求：
 1. 严格保持原剧本的风格、语气、人物性格和叙事节奏，确保无明显风格断层。
@@ -810,16 +810,17 @@ export const buildScriptContinuationPrompt = (existingScript: string, language: 
 3. 有效增加戏剧冲突和情感张力，使故事更具吸引力和张力。
 4. 续写内容应为原有剧本长度的30%-50%，字数适中，避免过短或过长。
 5. 保持剧本的原有格式，包括场景描述、人物对白、舞台指示等，确保格式一致。
-6. 输出语言为：\${language}，用词准确、表达流畅。
+6. 输出语言为：${language}，用词准确、表达流畅。
 7. 仅输出续写剧本内容，不添加任何说明、前缀或后缀。
 
 已有剧本内容：
-\${existingScript}
+${existingScript}
 
-请直接续写剧本内容。（不要包含"续写："等前缀）：\`;
+请直接续写剧本内容。（不要包含"续写："等前缀）：`;
+};
 
-export const buildScriptRewritePrompt = (originalScript: string, language: string): string => 
-  \`你是一位顶级剧本编剧顾问，擅长提升剧本的结构、情感和戏剧张力。请对下方提供的剧本进行系统性、创造性改写，目标是使剧本在连贯性、流畅性和戏剧冲突等方面显著提升。
+export const buildScriptRewritePrompt = (originalScript: string, language: string): string => {
+  return `你是一位顶级剧本编剧顾问，擅长提升剧本的结构、情感和戏剧张力。请对下方提供的剧本进行系统性、创造性改写，目标是使剧本在连贯性、流畅性和戏剧冲突等方面显著提升。
 
 改写具体要求如下：
 
@@ -832,12 +833,13 @@ export const buildScriptRewritePrompt = (originalScript: string, language: strin
 7. 优化整体节奏，合理分配高潮与缓和段落，避免情节拖沓或推进过快。
 8. 保持或适度增加剧本内容长度，确保内容充实但不过度冗长。
 9. 严格遵循剧本格式规范，包括场景标注、人物台词、舞台指示等。
-10. 输出语言为：\${language}，确保语言风格与剧本类型相符。
+10. 输出语言为：${language}，确保语言风格与剧本类型相符。
 
 原始剧本内容如下：
-\${originalScript}
+${originalScript}
 
 请根据以上要求，输出经过全面改写、结构优化、情感丰富的完整剧本文本。`;
+};
 
 // ============================================
 // Visual Service Prompts (Advanced)
