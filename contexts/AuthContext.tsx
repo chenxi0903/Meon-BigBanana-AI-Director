@@ -17,6 +17,7 @@ import {
   UserProfile,
   AuthResult,
 } from '../services/supabase/authService';
+import { initializeCloudSync } from '../services/modelRegistry';
 
 // ============================================
 // 类型定义
@@ -79,6 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
+          
+          // 初始化云端同步
+          initializeCloudSync(currentSession?.user?.id ?? null);
+
           if (currentSession?.user) {
             await loadProfile(currentSession.user.id);
           }

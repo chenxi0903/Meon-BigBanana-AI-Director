@@ -18,6 +18,7 @@ import {
   AspectRatio,
   VideoDuration,
 } from '../types/model';
+import { syncSettingsToCloud, fetchSettingsFromCloud } from './supabase/settingsSync';
 
 // localStorage 键名
 const STORAGE_KEY = 'meon_model_registry';
@@ -28,6 +29,72 @@ const normalizeBaseUrl = (url: string): string => url.trim().replace(/\/+$/, '')
 
 // 运行时状态缓存
 let registryState: ModelRegistryState | null = null;
+let currentUserId: string | null = null;
+let syncTimeout: NodeJS.Timeout | null = null;
+
+// ============================================
+// 云端同步
+// ============================================
+
+/**
+ * 初始化云端同步
+ * 当用户登录状态变化时调用
+ */
+export const initializeCloudSync = async (userId: string | null) => {
+  currentUserId = userId;
+  
+  if (userId) {
+    // 用户登录：从云端拉取配置并合并
+    try {
+      const cloudSettings = await fetchSettingsFromCloud(userId);
+      if (cloudSettings) {
+        // 更新 localStorage
+        if (cloudSettings.registry) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudSettings.registry));
+        }
+        if (cloudSettings.jimeng) {
+          localStorage.setItem(JIMENG_GLOBAL_CONFIG_KEY, JSON.stringify(cloudSettings.jimeng));
+        }
+        
+        // 重置并重新加载状态（触发迁移逻辑）
+        registryState = null;
+        loadRegistry();
+        
+        console.log('[Sync] 已从云端加载并应用用户设置');
+      }
+    } catch (e) {
+      console.error('[Sync] 加载云端设置失败:', e);
+    }
+  } else {
+    // 用户登出：是否需要清除本地设置？
+    // 目前策略：保留本地设置，以免用户体验突变，但停止同步
+    console.log('[Sync] 用户已登出，停止同步');
+  }
+};
+
+/**
+ * 触发云端同步（防抖）
+ */
+const triggerCloudSync = () => {
+  if (!currentUserId) return;
+  
+  if (syncTimeout) {
+    clearTimeout(syncTimeout);
+  }
+  
+  syncTimeout = setTimeout(async () => {
+    if (!currentUserId) return;
+    
+    const settings = {
+      registry: loadRegistry(),
+      jimeng: getJimengGlobalConfig(),
+    };
+    
+    await syncSettingsToCloud(currentUserId, settings);
+    console.log('[Sync] 设置已同步到云端');
+    syncTimeout = null;
+  }, 2000); // 2秒防抖
+};
 
 // ============================================
 // 状态管理
@@ -496,6 +563,7 @@ export const getJimengGlobalConfig = (): JimengGlobalConfig => {
 export const setJimengGlobalConfig = (config: JimengGlobalConfig): void => {
   try {
     localStorage.setItem(JIMENG_GLOBAL_CONFIG_KEY, JSON.stringify(config));
+    triggerCloudSync();
   } catch (e) {
     console.error('保存即梦全局配置失败:', e);
   }
