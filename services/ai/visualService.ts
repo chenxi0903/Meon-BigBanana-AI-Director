@@ -16,6 +16,7 @@ import {
 import { isJimengImageModel, callJimengImageApi } from '../adapters/jimengImageAdapter';
 import { callImageApi } from '../adapters/imageAdapter';
 import { ImageModelDefinition } from '../../types/model';
+import { getActiveChatModel, getChatModels, isModelAvailable } from '../modelRegistry';
 import {
   getStylePrompt,
   getNegativePrompt,
@@ -403,6 +404,13 @@ export const generateCharacterTurnaroundPanels = async (
   logScriptProgress(`正在为角色「${character.name}」生成九宫格造型视角描述...`);
 
   const stylePrompt = getStylePrompt(visualStyle);
+  const activeChatModelId = getActiveChatModel()?.id;
+  const availableChatModelId = getChatModels().find(m => isModelAvailable(m.id))?.id;
+  const resolvedModelId = isModelAvailable(model)
+    ? model
+    : (activeChatModelId && isModelAvailable(activeChatModelId)
+      ? activeChatModelId
+      : (availableChatModelId || model));
 
   // 构建 Art Direction 注入
   const artDirectionBlock = artDirection ? `
@@ -416,7 +424,7 @@ Lighting: ${artDirection.lightingStyle}, Texture: ${artDirection.textureStyle}
   const prompt = buildTurnaroundPanelPrompt(visualStyle, stylePrompt, artDirectionBlock, character);
 
   try {
-    const responseText = await retryOperation(() => chatCompletion(prompt, model, 0.4, 4096, 'json_object'));
+    const responseText = await retryOperation(() => chatCompletion(prompt, resolvedModelId, 0.4, 4096, 'json_object'));
     const text = cleanJsonString(responseText);
     const parsed = JSON.parse(text);
 
