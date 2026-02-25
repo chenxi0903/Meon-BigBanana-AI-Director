@@ -4,6 +4,8 @@
  */
 
 import { AspectRatio } from "../../types";
+import { callGoogleGenAiChatApi } from '../adapters/googleGenAiAdapter';
+import { ChatModelDefinition } from "../../types/model";
 import {
   getApiBaseUrlForModel,
   getApiKeyForModel,
@@ -223,6 +225,22 @@ export const chatCompletion = async (
   responseFormat?: 'json_object',
   timeout: number = 600000
 ): Promise<string> => {
+  const resolved = resolveModel('chat', model);
+  const apiBase = getApiBase('chat', model);
+  const shouldUseGoogle = resolved?.providerId === 'google' || apiBase.includes('generativelanguage.googleapis.com');
+
+  if (shouldUseGoogle) {
+    return callGoogleGenAiChatApi(
+      {
+        prompt,
+        responseFormat: responseFormat ? 'json' : 'text',
+        timeout,
+        overrideParams: { temperature, maxTokens },
+      },
+      resolved as ChatModelDefinition | undefined
+    );
+  }
+
   const apiKey = checkApiKey('chat', model);
   const requestModel = resolveRequestModel('chat', model);
 
@@ -240,8 +258,6 @@ export const chatCompletion = async (
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const apiBase = getApiBase('chat', model);
-    const resolved = resolveModel('chat', model);
     const endpoint = resolved?.endpoint || '/v1/chat/completions';
     const response = await fetch(`${apiBase}${endpoint}`, {
       method: 'POST',
@@ -279,6 +295,26 @@ export const chatCompletionStream = async (
   timeout: number = 600000,
   onDelta?: (delta: string) => void
 ): Promise<string> => {
+  const resolved = resolveModel('chat', model);
+  const apiBase = getApiBase('chat', model);
+  const shouldUseGoogle = resolved?.providerId === 'google' || apiBase.includes('generativelanguage.googleapis.com');
+
+  if (shouldUseGoogle) {
+    const result = await callGoogleGenAiChatApi(
+      {
+        prompt,
+        responseFormat: responseFormat ? 'json' : 'text',
+        timeout,
+        overrideParams: { temperature },
+      },
+      resolved as ChatModelDefinition | undefined
+    );
+    if (result) {
+      onDelta?.(result);
+    }
+    return result;
+  }
+
   const apiKey = checkApiKey('chat', model);
   const requestModel = resolveRequestModel('chat', model);
   const requestBody: any = {
@@ -296,8 +332,6 @@ export const chatCompletionStream = async (
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const apiBase = getApiBase('chat', model);
-    const resolved = resolveModel('chat', model);
     const endpoint = resolved?.endpoint || '/v1/chat/completions';
     const response = await fetch(`${apiBase}${endpoint}`, {
       method: 'POST',
