@@ -1,4 +1,4 @@
-import { ProjectState, AssetLibraryItem } from '../types';
+﻿import { ProjectState, AssetLibraryItem } from '../types';
 import { isSupabaseConfigured } from './supabase/client';
 import {
   markProjectDirty,
@@ -8,6 +8,7 @@ import {
   deleteProjectFromCloud,
   deleteAssetFromCloud,
   mergeProjectLists,
+  mergeProjectPreservingLocalMedia,
   syncProjectToCloud,
 } from './supabase/syncService';
 
@@ -20,8 +21,8 @@ const EXPORT_SCHEMA_VERSION = 1;
 import { supabase } from './supabase/client';
 
 /**
- * 获取当前登录的用户 ID（从 Supabase auth）
- * 返回 null 表示未登录或 Supabase 未配置
+ * 鑾峰彇褰撳墠鐧诲綍鐨勭敤鎴?ID锛堜粠 Supabase auth锛?
+ * 杩斿洖 null 琛ㄧず鏈櫥褰曟垨 Supabase 鏈厤缃?
  */
 async function _getCurrentUserId(): Promise<string | null> {
   if (!isSupabaseConfigured() || !supabase) return null;
@@ -123,7 +124,7 @@ export const importIndexedDBData = async (
   options?: { mode?: 'merge' | 'replace' }
 ): Promise<{ projects: number; assets: number }> => {
   if (!isValidExportPayload(payload)) {
-    throw new Error('导入文件格式不正确');
+    throw new Error('瀵煎叆鏂囦欢鏍煎紡涓嶆纭?);
   }
 
   const mode = options?.mode || 'merge';
@@ -143,7 +144,7 @@ export const importIndexedDBData = async (
     let assetsWritten = 0;
 
     payload.stores.projects.forEach(project => {
-      // Migration: veo-r2v 模型已下线，迁移为 veo
+      // Migration: veo-r2v 妯″瀷宸蹭笅绾匡紝杩佺Щ涓?veo
       if (project.shots) {
         project.shots.forEach((shot: any) => {
           if (shot.videoModel === 'veo-r2v') {
@@ -175,7 +176,7 @@ export const saveProjectToDB = async (project: ProjectState): Promise<void> => {
   const db = await openDB();
   const p = { ...project, lastModified: Date.now() };
 
-  // 1. 立即写入 IndexedDB（快速）
+  // 1. 绔嬪嵆鍐欏叆 IndexedDB锛堝揩閫燂級
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
@@ -184,13 +185,13 @@ export const saveProjectToDB = async (project: ProjectState): Promise<void> => {
     request.onerror = () => reject(request.error);
   });
 
-  // 2. 后台触发云端同步（debounced，不阻塞）
+  // 2. 鍚庡彴瑙﹀彂浜戠鍚屾锛坉ebounced锛屼笉闃诲锛?
   _getCurrentUserId().then((userId) => {
     if (userId) {
       markProjectDirty(p.id, p, userId);
     }
   }).catch(() => {
-    // 同步失败不影响本地保存
+    // 鍚屾澶辫触涓嶅奖鍝嶆湰鍦颁繚瀛?
   });
 };
 
@@ -211,7 +212,7 @@ export const loadProjectFromDB = async (id: string): Promise<ProjectState> => {
         if (project.scriptData && !project.scriptData.props) {
           project.scriptData.props = [];
         }
-        // Migration: veo-r2v 模型已下线，迁移为 veo
+        // Migration: veo-r2v 妯″瀷宸蹭笅绾匡紝杩佺Щ涓?veo
         let migrated = false;
         if (project.shots) {
           project.shots.forEach((shot: any) => {
@@ -221,13 +222,13 @@ export const loadProjectFromDB = async (id: string): Promise<ProjectState> => {
             }
           });
         }
-        // 如果发生了迁移，异步回写 IndexedDB，避免每次加载都重复执行
+        // 濡傛灉鍙戠敓浜嗚縼绉伙紝寮傛鍥炲啓 IndexedDB锛岄伩鍏嶆瘡娆″姞杞介兘閲嶅鎵ц
         if (migrated) {
           openDB().then(writeDb => {
             const writeTx = writeDb.transaction(STORE_NAME, 'readwrite');
             writeTx.objectStore(STORE_NAME).put(project);
-            console.log(`🔄 项目 "${project.title}" 已迁移废弃的视频模型`);
-          }).catch(() => { /* 回写失败不影响运行 */ });
+            console.log(`馃攧 椤圭洰 "${project.title}" 宸茶縼绉诲簾寮冪殑瑙嗛妯″瀷`);
+          }).catch(() => { /* 鍥炲啓澶辫触涓嶅奖鍝嶈繍琛?*/ });
         }
         resolve(project);
       }
@@ -236,20 +237,21 @@ export const loadProjectFromDB = async (id: string): Promise<ProjectState> => {
     request.onerror = () => reject(request.error);
   });
 
-  // 后台检查云端是否有更新版本（不阻塞返回）
+  // 鍚庡彴妫€鏌ヤ簯绔槸鍚︽湁鏇存柊鐗堟湰锛堜笉闃诲杩斿洖锛?
   _getCurrentUserId().then(async (userId) => {
     if (!userId) return;
     try {
       const cloudProject = await fetchProjectFromCloud(id, userId);
       if (cloudProject && cloudProject.lastModified > project.lastModified) {
-        // 云端版本更新，写入本地缓存
+        // 浜戠鐗堟湰鏇存柊锛屽啓鍏ユ湰鍦扮紦瀛?
         const writeDb = await openDB();
         const writeTx = writeDb.transaction(STORE_NAME, 'readwrite');
-        writeTx.objectStore(STORE_NAME).put(cloudProject);
-        console.log(`☁️ 云端有更新版本，已更新本地缓存: ${cloudProject.title}`);
+        const mergedProject = mergeProjectPreservingLocalMedia(project, cloudProject);
+        writeTx.objectStore(STORE_NAME).put(mergedProject);
+        console.log(`鈽侊笍 浜戠鏈夋洿鏂扮増鏈紝宸叉洿鏂版湰鍦扮紦瀛? ${mergedProject.title}`);
       }
     } catch {
-      // 云端检查失败不影响本地使用
+      // 浜戠妫€鏌ュけ璐ヤ笉褰卞搷鏈湴浣跨敤
     }
   }).catch(() => {});
 
@@ -271,27 +273,27 @@ export const getAllProjectsMetadata = async (): Promise<ProjectState[]> => {
     request.onerror = () => reject(request.error);
   });
 
-  // 尝试合并云端项目列表（不阻塞，快速返回本地数据）
+  // 灏濊瘯鍚堝苟浜戠椤圭洰鍒楄〃锛堜笉闃诲锛屽揩閫熻繑鍥炴湰鍦版暟鎹級
   try {
     const userId = await _getCurrentUserId();
     if (userId) {
       const cloudProjects = await fetchAllProjectsFromCloud(userId);
       if (cloudProjects.length > 0) {
         const merged = mergeProjectLists(localProjects, cloudProjects);
-        // 将云端独有的项目也缓存到本地 IndexedDB
+        // 灏嗕簯绔嫭鏈夌殑椤圭洰涔熺紦瀛樺埌鏈湴 IndexedDB
         _cacheCloudOnlyProjects(localProjects, cloudProjects).catch(() => {});
         return merged;
       }
     }
   } catch {
-    // 云端获取失败，返回本地数据
+    // 浜戠鑾峰彇澶辫触锛岃繑鍥炴湰鍦版暟鎹?
   }
 
   return localProjects;
 };
 
 /**
- * 将云端独有的项目缓存到本地 IndexedDB
+ * 灏嗕簯绔嫭鏈夌殑椤圭洰缂撳瓨鍒版湰鍦?IndexedDB
  */
 async function _cacheCloudOnlyProjects(
   localProjects: ProjectState[],
@@ -312,7 +314,7 @@ async function _cacheCloudOnlyProjects(
 
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => {
-      console.log(`☁️ 已缓存 ${cloudOnly.length} 个云端项目到本地`);
+      console.log(`鈽侊笍 宸茬紦瀛?${cloudOnly.length} 涓簯绔」鐩埌鏈湴`);
       resolve();
     };
     tx.onerror = () => reject(tx.error);
@@ -333,7 +335,7 @@ export const saveAssetToLibrary = async (item: AssetLibraryItem): Promise<void> 
     request.onerror = () => reject(request.error);
   });
 
-  // 后台同步到云端
+  // 鍚庡彴鍚屾鍒颁簯绔?
   _getCurrentUserId().then((userId) => {
     if (userId) {
       markAssetDirty(item, userId);
@@ -366,7 +368,7 @@ export const deleteAssetFromLibrary = async (id: string): Promise<void> => {
     request.onerror = () => reject(request.error);
   });
 
-  // 后台删除云端
+  // 鍚庡彴鍒犻櫎浜戠
   _getCurrentUserId().then(async (userId) => {
     if (userId) {
       await deleteAssetFromCloud(id, userId);
@@ -375,31 +377,31 @@ export const deleteAssetFromLibrary = async (id: string): Promise<void> => {
 };
 
 /**
- * 从IndexedDB中删除项目及其所有关联资源
- * 由于所有媒体资源（图片、视频）都以Base64格式存储在项目对象内部，
- * 删除项目记录时会自动清理所有相关资源：
- * - 角色参考图 (Character.referenceImage)
- * - 角色变体参考图 (CharacterVariation.referenceImage)
- * - 场景参考图 (Scene.referenceImage)
- * - 关键帧图像 (Keyframe.imageUrl)
- * - 视频片段 (VideoInterval.videoUrl)
- * - 渲染日志 (RenderLog[])
- * @param id - 项目ID
+ * 浠嶪ndexedDB涓垹闄ら」鐩強鍏舵墍鏈夊叧鑱旇祫婧?
+ * 鐢变簬鎵€鏈夊獟浣撹祫婧愶紙鍥剧墖銆佽棰戯級閮戒互Base64鏍煎紡瀛樺偍鍦ㄩ」鐩璞″唴閮紝
+ * 鍒犻櫎椤圭洰璁板綍鏃朵細鑷姩娓呯悊鎵€鏈夌浉鍏宠祫婧愶細
+ * - 瑙掕壊鍙傝€冨浘 (Character.referenceImage)
+ * - 瑙掕壊鍙樹綋鍙傝€冨浘 (CharacterVariation.referenceImage)
+ * - 鍦烘櫙鍙傝€冨浘 (Scene.referenceImage)
+ * - 鍏抽敭甯у浘鍍?(Keyframe.imageUrl)
+ * - 瑙嗛鐗囨 (VideoInterval.videoUrl)
+ * - 娓叉煋鏃ュ織 (RenderLog[])
+ * @param id - 椤圭洰ID
  */
 export const deleteProjectFromDB = async (id: string): Promise<void> => {
-  console.log(`🗑️ 开始删除项目: ${id}`);
+  console.log(`馃棏锔?寮€濮嬪垹闄ら」鐩? ${id}`);
   
   const db = await openDB();
   
-  // 先获取项目信息以便记录删除的资源统计
+  // 鍏堣幏鍙栭」鐩俊鎭互渚胯褰曞垹闄ょ殑璧勬簮缁熻
   let project: ProjectState | null = null;
   try {
     project = await loadProjectFromDB(id);
   } catch (e) {
-    console.warn('无法加载项目信息，直接删除');
+    console.warn('鏃犳硶鍔犺浇椤圭洰淇℃伅锛岀洿鎺ュ垹闄?);
   }
   
-  // 删除本地 IndexedDB
+  // 鍒犻櫎鏈湴 IndexedDB
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
@@ -407,7 +409,7 @@ export const deleteProjectFromDB = async (id: string): Promise<void> => {
     
     request.onsuccess = () => {
       if (project) {
-        // 统计被删除的资源
+        // 缁熻琚垹闄ょ殑璧勬簮
         let resourceCount = {
           characters: 0,
           characterVariations: 0,
@@ -423,7 +425,7 @@ export const deleteProjectFromDB = async (id: string): Promise<void> => {
           resourceCount.scenes = project.scriptData.scenes.filter(s => s.referenceImage).length;
           resourceCount.props = (project.scriptData.props || []).filter(p => p.referenceImage).length;
           
-          // 统计角色变体
+          // 缁熻瑙掕壊鍙樹綋
           project.scriptData.characters.forEach(c => {
             if (c.variations) {
               resourceCount.characterVariations += c.variations.filter(v => v.referenceImage).length;
@@ -442,36 +444,36 @@ export const deleteProjectFromDB = async (id: string): Promise<void> => {
           });
         }
         
-        console.log(`✅ 项目已删除: ${project.title}`);
-        console.log(`📊 清理的资源统计:`, resourceCount);
-        console.log(`   - 角色参考图: ${resourceCount.characters}个`);
-        console.log(`   - 角色变体图: ${resourceCount.characterVariations}个`);
-        console.log(`   - 场景参考图: ${resourceCount.scenes}个`);
-        console.log(`   - 道具参考图: ${resourceCount.props}个`);
-        console.log(`   - 关键帧图像: ${resourceCount.keyframes}个`);
-        console.log(`   - 视频片段: ${resourceCount.videos}个`);
-        console.log(`   - 渲染日志: ${resourceCount.renderLogs}条`);
+        console.log(`鉁?椤圭洰宸插垹闄? ${project.title}`);
+        console.log(`馃搳 娓呯悊鐨勮祫婧愮粺璁?`, resourceCount);
+        console.log(`   - 瑙掕壊鍙傝€冨浘: ${resourceCount.characters}涓猔);
+        console.log(`   - 瑙掕壊鍙樹綋鍥? ${resourceCount.characterVariations}涓猔);
+        console.log(`   - 鍦烘櫙鍙傝€冨浘: ${resourceCount.scenes}涓猔);
+        console.log(`   - 閬撳叿鍙傝€冨浘: ${resourceCount.props}涓猔);
+        console.log(`   - 鍏抽敭甯у浘鍍? ${resourceCount.keyframes}涓猔);
+        console.log(`   - 瑙嗛鐗囨: ${resourceCount.videos}涓猔);
+        console.log(`   - 娓叉煋鏃ュ織: ${resourceCount.renderLogs}鏉);
       } else {
-        console.log(`✅ 项目已删除: ${id}`);
+        console.log(`鉁?椤圭洰宸插垹闄? ${id}`);
       }
       
       resolve();
     };
     
     request.onerror = () => {
-      console.error(`❌ 删除项目失败: ${id}`, request.error);
+      console.error(`鉂?鍒犻櫎椤圭洰澶辫触: ${id}`, request.error);
       reject(request.error);
     };
   });
 
-  // 后台删除云端数据（不阻塞）
+  // 鍚庡彴鍒犻櫎浜戠鏁版嵁锛堜笉闃诲锛?
   _getCurrentUserId().then(async (userId) => {
     if (userId) {
       await deleteProjectFromCloud(id, userId);
-      console.log(`☁️ 云端项目已删除: ${id}`);
+      console.log(`鈽侊笍 浜戠椤圭洰宸插垹闄? ${id}`);
     }
   }).catch(() => {
-    console.warn('云端项目删除失败，不影响本地操作');
+    console.warn('浜戠椤圭洰鍒犻櫎澶辫触锛屼笉褰卞搷鏈湴鎿嶄綔');
   });
 };
 
@@ -484,14 +486,14 @@ export const convertImageToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      reject(new Error('只支持图片文件'));
+      reject(new Error('鍙敮鎸佸浘鐗囨枃浠?));
       return;
     }
 
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
-      reject(new Error('图片大小不能超过 10MB'));
+      reject(new Error('鍥剧墖澶у皬涓嶈兘瓒呰繃 10MB'));
       return;
     }
 
@@ -503,7 +505,7 @@ export const convertImageToBase64 = (file: File): Promise<string> => {
     };
     
     reader.onerror = () => {
-      reject(new Error('图片读取失败'));
+      reject(new Error('鍥剧墖璇诲彇澶辫触'));
     };
     
     reader.readAsDataURL(file);
@@ -515,26 +517,28 @@ export const createNewProjectState = (): ProjectState => {
   const id = 'proj_' + Date.now().toString(36);
   return {
     id,
-    title: '未命名项目',
+    title: '鏈懡鍚嶉」鐩?,
     createdAt: Date.now(),
     lastModified: Date.now(),
     stage: 'script',
     targetDuration: '60s', // Default duration now 60s
-    language: '中文', // Default language
+    language: '涓枃', // Default language
     visualStyle: 'live-action', // Default visual style
     shotGenerationModel: 'gpt-5.1', // Default model
-    rawScript: `标题：示例剧本
+    rawScript: `鏍囬锛氱ず渚嬪墽鏈?
 
-场景 1
-外景。夜晚街道 - 雨夜
-霓虹灯在水坑中反射出破碎的光芒。
-侦探（30岁,穿着风衣）站在街角,点燃了一支烟。
+鍦烘櫙 1
+澶栨櫙銆傚鏅氳閬?- 闆ㄥ
+闇撹櫣鐏湪姘村潙涓弽灏勫嚭鐮寸鐨勫厜鑺掋€?
+渚︽帰锛?0宀?绌跨潃椋庤。锛夌珯鍦ㄨ瑙?鐐圭噧浜嗕竴鏀儫銆?
 
-侦探
-这雨什么时候才会停？`,
+渚︽帰
+杩欓洦浠€涔堟椂鍊欐墠浼氬仠锛焋,
     scriptData: null,
     shots: [],
     isParsingScript: false,
     renderLogs: [], // Initialize empty render logs array
   };
 };
+
+

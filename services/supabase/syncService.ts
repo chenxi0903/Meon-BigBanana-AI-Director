@@ -1,30 +1,23 @@
 /**
- * 同步引擎
- * 实现 IndexedDB ↔ Supabase 的混合同步：
- * - 正常在线时实时同步（debounced）
- * - 离线时本地保存，上线后自动合并
+ * 鍚屾寮曟搸
+ * 瀹炵幇 IndexedDB 鈫?Supabase 鐨勬贩鍚堝悓姝ワ細
+ * - 姝ｅ父鍦ㄧ嚎鏃跺疄鏃跺悓姝ワ紙debounced锛?
+ * - 绂荤嚎鏃舵湰鍦颁繚瀛橈紝涓婄嚎鍚庤嚜鍔ㄥ悎骞?
  * 
- * 减压策略：
- * - Debounced Write: 2 秒防抖
- * - Dirty Tracking: 只同步变更的数据
- * - 增量媒体同步: 只上传新增/变更的媒体文件
- * - lastModified 比较: 跳过未变化的数据
- * - 离线队列: 离线操作进队列
- * - 指数退避: 同步失败时退避重试
+ * 鍑忓帇绛栫暐锛?
+ * - Debounced Write: 2 绉掗槻鎶?
+ * - Dirty Tracking: 鍙悓姝ュ彉鏇寸殑鏁版嵁
+ * - 澧為噺濯掍綋鍚屾: 鍙笂浼犳柊澧?鍙樻洿鐨勫獟浣撴枃浠?
+ * - lastModified 姣旇緝: 璺宠繃鏈彉鍖栫殑鏁版嵁
+ * - 绂荤嚎闃熷垪: 绂荤嚎鎿嶄綔杩涢槦鍒?
+ * - 鎸囨暟閫€閬? 鍚屾澶辫触鏃堕€€閬块噸璇?
  */
 
-import { ProjectState, AssetLibraryItem, Character, Scene, Prop, Shot, Keyframe } from '../../types';
+import { ProjectState, AssetLibraryItem, Character } from '../../types';
 import { supabase, isSupabaseConfigured } from './client';
-import {
-  uploadMedia,
-  deleteProjectMedia,
-  isBase64DataUrl,
-  MediaType,
-  clearUploadCache,
-} from './mediaStorage';
 
 // ============================================
-// 类型定义
+// 绫诲瀷瀹氫箟
 // ============================================
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
@@ -39,7 +32,7 @@ interface PendingSync {
 }
 
 // ============================================
-// 状态管理
+// 鐘舵€佺鐞?
 // ============================================
 
 let currentStatus: SyncStatus = 'idle';
@@ -49,21 +42,21 @@ const dirtyProjects: Set<string> = new Set();
 const pendingQueue: PendingSync[] = [];
 const syncTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
-// 退避状态
+// 閫€閬跨姸鎬?
 let consecutiveErrors = 0;
 const MAX_RETRIES = 5;
 const BASE_DELAY = 2000;
 
 // ============================================
-// 事件监听
+// 浜嬩欢鐩戝惉
 // ============================================
 
 /**
- * 订阅同步状态变化
+ * 璁㈤槄鍚屾鐘舵€佸彉鍖?
  */
 export function subscribeSyncStatus(listener: SyncListener): () => void {
   listeners.add(listener);
-  listener(currentStatus); // 立即通知当前状态
+  listener(currentStatus); // 绔嬪嵆閫氱煡褰撳墠鐘舵€?
   return () => listeners.delete(listener);
 }
 
@@ -76,151 +69,184 @@ export function getSyncStatus(): SyncStatus {
   return currentStatus;
 }
 
-// 网络状态监听
+// 缃戠粶鐘舵€佺洃鍚?
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     isOnline = true;
-    console.log('[Sync] 网络恢复，开始处理离线队列...');
+    console.log('[Sync] 缃戠粶鎭㈠锛屽紑濮嬪鐞嗙绾块槦鍒?..');
     flushPendingQueue();
   });
 
   window.addEventListener('offline', () => {
     isOnline = false;
     setStatus('offline');
-    console.log('[Sync] 网络断开，切换到离线模式');
+    console.log('[Sync] 缃戠粶鏂紑锛屽垏鎹㈠埌绂荤嚎妯″紡');
   });
 }
 
 // ============================================
-// 媒体提取与替换
+// 濯掍綋鎻愬彇涓庢浛鎹?
 // ============================================
 
 /**
- * 从 ProjectState 中提取所有 base64 媒体字段，
- * 上传到 Storage 后替换为 URL。
- * 返回处理后的 ProjectState（不修改原对象）。
+ * 浠?ProjectState 涓彁鍙栨墍鏈?base64 濯掍綋瀛楁锛?
+ * 涓婁紶鍒?Storage 鍚庢浛鎹负 URL銆?
+ * 杩斿洖澶勭悊鍚庣殑 ProjectState锛堜笉淇敼鍘熷璞★級銆?
  */
-async function extractAndUploadMedia(
-  project: ProjectState,
-  userId: string
-): Promise<ProjectState> {
+function stripCharacterMedia(character: Character): Character {
+  return {
+    ...character,
+    referenceImage: undefined,
+    variations: (character.variations || []).map((variation) => ({
+      ...variation,
+      referenceImage: undefined,
+    })),
+    turnaround: character.turnaround
+      ? {
+          ...character.turnaround,
+          imageUrl: undefined,
+        }
+      : undefined,
+  };
+}
+
+function stripProjectMediaForCloud(project: ProjectState): ProjectState {
   const clone: ProjectState = JSON.parse(JSON.stringify(project));
-  const uploads: Array<Promise<void>> = [];
 
-  // 角色参考图
-  if (clone.scriptData?.characters) {
-    for (const char of clone.scriptData.characters) {
-      if (isBase64DataUrl(char.referenceImage)) {
-        uploads.push(
-          uploadMedia(userId, project.id, 'characters', char.id, char.referenceImage!)
-            .then((result) => {
-              if (result) char.referenceImage = result.url;
-            })
-        );
-      }
-      // 角色变体图
-      if (char.variations) {
-        for (const variation of char.variations) {
-          if (isBase64DataUrl(variation.referenceImage)) {
-            uploads.push(
-              uploadMedia(userId, project.id, 'characters', `${char.id}_var_${variation.id}`, variation.referenceImage!)
-                .then((result) => {
-                  if (result) variation.referenceImage = result.url;
-                })
-            );
-          }
+  if (clone.scriptData) {
+    clone.scriptData = {
+      ...clone.scriptData,
+      characters: (clone.scriptData.characters || []).map(stripCharacterMedia),
+      scenes: (clone.scriptData.scenes || []).map((scene) => ({
+        ...scene,
+        referenceImage: undefined,
+      })),
+      props: (clone.scriptData.props || []).map((prop) => ({
+        ...prop,
+        referenceImage: undefined,
+      })),
+    };
+  }
+
+  clone.shots = (clone.shots || []).map((shot) => ({
+    ...shot,
+    keyframes: (shot.keyframes || []).map((kf) => ({
+      ...kf,
+      imageUrl: undefined,
+    })),
+    interval: shot.interval
+      ? {
+          ...shot.interval,
+          videoUrl: undefined,
         }
-      }
-      // 角色九宫格
-      if (char.turnaround?.imageUrl && isBase64DataUrl(char.turnaround.imageUrl)) {
-        uploads.push(
-          uploadMedia(userId, project.id, 'turnarounds', `${char.id}_turnaround`, char.turnaround.imageUrl)
-            .then((result) => {
-              if (result && char.turnaround) char.turnaround.imageUrl = result.url;
-            })
-        );
-      }
-    }
-  }
-
-  // 场景参考图
-  if (clone.scriptData?.scenes) {
-    for (const scene of clone.scriptData.scenes) {
-      if (isBase64DataUrl(scene.referenceImage)) {
-        uploads.push(
-          uploadMedia(userId, project.id, 'scenes', scene.id, scene.referenceImage!)
-            .then((result) => {
-              if (result) scene.referenceImage = result.url;
-            })
-        );
-      }
-    }
-  }
-
-  // 道具参考图
-  if (clone.scriptData?.props) {
-    for (const prop of clone.scriptData.props) {
-      if (isBase64DataUrl(prop.referenceImage)) {
-        uploads.push(
-          uploadMedia(userId, project.id, 'props', prop.id, prop.referenceImage!)
-            .then((result) => {
-              if (result) prop.referenceImage = result.url;
-            })
-        );
-      }
-    }
-  }
-
-  // 关键帧图像和视频
-  if (clone.shots) {
-    for (const shot of clone.shots) {
-      if (shot.keyframes) {
-        for (const kf of shot.keyframes) {
-          if (isBase64DataUrl(kf.imageUrl)) {
-            uploads.push(
-              uploadMedia(userId, project.id, 'keyframes', `${shot.id}_${kf.id}`, kf.imageUrl!)
-                .then((result) => {
-                  if (result) kf.imageUrl = result.url;
-                })
-            );
-          }
+      : shot.interval,
+    nineGrid: shot.nineGrid
+      ? {
+          ...shot.nineGrid,
+          imageUrl: undefined,
         }
-      }
-      if (shot.interval?.videoUrl && isBase64DataUrl(shot.interval.videoUrl)) {
-        uploads.push(
-          uploadMedia(userId, project.id, 'videos', `${shot.id}_video`, shot.interval.videoUrl)
-            .then((result) => {
-              if (result && shot.interval) shot.interval.videoUrl = result.url;
-            })
-        );
-      }
-      // 九宫格
-      if (shot.nineGrid?.imageUrl && isBase64DataUrl(shot.nineGrid.imageUrl)) {
-        uploads.push(
-          uploadMedia(userId, project.id, 'ninegrid', `${shot.id}_ninegrid`, shot.nineGrid.imageUrl)
-            .then((result) => {
-              if (result && shot.nineGrid) shot.nineGrid.imageUrl = result.url;
-            })
-        );
-      }
-    }
-  }
-
-  // 并发上传（每批 5 个）
-  const BATCH_SIZE = 5;
-  for (let i = 0; i < uploads.length; i += BATCH_SIZE) {
-    await Promise.all(uploads.slice(i, i + BATCH_SIZE));
-  }
+      : shot.nineGrid,
+  }));
 
   return clone;
 }
 
+function stripAssetMediaForCloud(item: AssetLibraryItem): AssetLibraryItem | null {
+  if (item.type !== 'character') return null;
+  return {
+    ...item,
+    data: stripCharacterMedia(item.data as Character),
+  };
+}
+
+export function mergeProjectPreservingLocalMedia(
+  local: ProjectState,
+  remote: ProjectState
+): ProjectState {
+  const merged: ProjectState = JSON.parse(JSON.stringify(remote));
+
+  const localCharacters = new Map((local.scriptData?.characters || []).map((c) => [String(c.id), c]));
+  const localScenes = new Map((local.scriptData?.scenes || []).map((s) => [String(s.id), s]));
+  const localProps = new Map((local.scriptData?.props || []).map((p) => [String(p.id), p]));
+  const localShots = new Map((local.shots || []).map((shot) => [String(shot.id), shot]));
+
+  if (merged.scriptData) {
+    merged.scriptData.characters = (merged.scriptData.characters || []).map((remoteChar) => {
+      const localChar = localCharacters.get(String(remoteChar.id));
+      if (!localChar) return remoteChar;
+      return {
+        ...remoteChar,
+        referenceImage: localChar.referenceImage || remoteChar.referenceImage,
+        turnaround: remoteChar.turnaround
+          ? {
+              ...remoteChar.turnaround,
+              imageUrl: localChar.turnaround?.imageUrl || remoteChar.turnaround?.imageUrl,
+            }
+          : remoteChar.turnaround,
+        variations: (remoteChar.variations || []).map((remoteVar) => {
+          const localVar = (localChar.variations || []).find((v) => String(v.id) === String(remoteVar.id));
+          return {
+            ...remoteVar,
+            referenceImage: localVar?.referenceImage || remoteVar.referenceImage,
+          };
+        }),
+      };
+    });
+
+    merged.scriptData.scenes = (merged.scriptData.scenes || []).map((remoteScene) => {
+      const localScene = localScenes.get(String(remoteScene.id));
+      return {
+        ...remoteScene,
+        referenceImage: localScene?.referenceImage || remoteScene.referenceImage,
+      };
+    });
+
+    merged.scriptData.props = (merged.scriptData.props || []).map((remoteProp) => {
+      const localProp = localProps.get(String(remoteProp.id));
+      return {
+        ...remoteProp,
+        referenceImage: localProp?.referenceImage || remoteProp.referenceImage,
+      };
+    });
+  }
+
+  merged.shots = (merged.shots || []).map((remoteShot) => {
+    const localShot = localShots.get(String(remoteShot.id));
+    if (!localShot) return remoteShot;
+    const localKeyframes = new Map((localShot.keyframes || []).map((kf) => [String(kf.id), kf]));
+    return {
+      ...remoteShot,
+      keyframes: (remoteShot.keyframes || []).map((remoteKf) => {
+        const localKf = localKeyframes.get(String(remoteKf.id));
+        return {
+          ...remoteKf,
+          imageUrl: localKf?.imageUrl || remoteKf.imageUrl,
+        };
+      }),
+      interval: remoteShot.interval
+        ? {
+            ...remoteShot.interval,
+            videoUrl: localShot.interval?.videoUrl || remoteShot.interval.videoUrl,
+          }
+        : remoteShot.interval,
+      nineGrid: remoteShot.nineGrid
+        ? {
+            ...remoteShot.nineGrid,
+            imageUrl: localShot.nineGrid?.imageUrl || remoteShot.nineGrid.imageUrl,
+          }
+        : remoteShot.nineGrid,
+    };
+  });
+
+  return merged;
+}
+
 // ============================================
-// 数据库操作
+// 鏁版嵁搴撴搷浣?
 // ============================================
 
 /**
- * 将项目同步到 Supabase（含媒体上传）
+ * 灏嗛」鐩悓姝ュ埌 Supabase锛堝惈濯掍綋涓婁紶锛?
  */
 export async function syncProjectToCloud(
   project: ProjectState,
@@ -231,10 +257,10 @@ export async function syncProjectToCloud(
   try {
     setStatus('syncing');
 
-    // 提取并上传媒体
-    const cloudProject = await extractAndUploadMedia(project, userId);
+    // 鎻愬彇骞朵笂浼犲獟浣?
+    const cloudProject = stripProjectMediaForCloud(project);
 
-    // 写入数据库
+    // 鍐欏叆鏁版嵁搴?
     const { error } = await supabase.from('projects').upsert({
       id: cloudProject.id,
       user_id: userId,
@@ -255,7 +281,7 @@ export async function syncProjectToCloud(
     });
 
     if (error) {
-      console.error('[Sync] 同步项目失败:', error);
+      console.error('[Sync] 鍚屾椤圭洰澶辫触:', error);
       setStatus('error');
       consecutiveErrors++;
       return false;
@@ -266,7 +292,7 @@ export async function syncProjectToCloud(
     setStatus('synced');
     return true;
   } catch (err) {
-    console.error('[Sync] 同步项目异常:', err);
+    console.error('[Sync] 鍚屾椤圭洰寮傚父:', err);
     setStatus('error');
     consecutiveErrors++;
     return false;
@@ -274,7 +300,7 @@ export async function syncProjectToCloud(
 }
 
 /**
- * 从 Supabase 加载项目
+ * 浠?Supabase 鍔犺浇椤圭洰
  */
 export async function fetchProjectFromCloud(
   projectId: string,
@@ -299,7 +325,7 @@ export async function fetchProjectFromCloud(
 }
 
 /**
- * 从 Supabase 获取所有项目元数据
+ * 浠?Supabase 鑾峰彇鎵€鏈夐」鐩厓鏁版嵁
  */
 export async function fetchAllProjectsFromCloud(
   userId: string
@@ -322,7 +348,7 @@ export async function fetchAllProjectsFromCloud(
 }
 
 /**
- * 从 Supabase 删除项目
+ * 浠?Supabase 鍒犻櫎椤圭洰
  */
 export async function deleteProjectFromCloud(
   projectId: string,
@@ -331,10 +357,7 @@ export async function deleteProjectFromCloud(
   if (!supabase || !isSupabaseConfigured()) return false;
 
   try {
-    // 先删除 Storage 中的媒体
-    await deleteProjectMedia(userId, projectId);
-
-    // 再删除数据库记录
+    // 鍐嶅垹闄ゆ暟鎹簱璁板綍
     const { error } = await supabase
       .from('projects')
       .delete()
@@ -342,23 +365,23 @@ export async function deleteProjectFromCloud(
       .eq('user_id', userId);
 
     if (error) {
-      console.error('[Sync] 删除云端项目失败:', error);
+      console.error('[Sync] 鍒犻櫎浜戠椤圭洰澶辫触:', error);
       return false;
     }
 
     return true;
   } catch (err) {
-    console.error('[Sync] 删除云端项目异常:', err);
+    console.error('[Sync] 鍒犻櫎浜戠椤圭洰寮傚父:', err);
     return false;
   }
 }
 
 // ============================================
-// 资产库同步
+// 璧勪骇搴撳悓姝?
 // ============================================
 
 /**
- * 同步资产到 Supabase
+ * 鍚屾璧勪骇鍒?Supabase
  */
 export async function syncAssetToCloud(
   item: AssetLibraryItem,
@@ -367,20 +390,25 @@ export async function syncAssetToCloud(
   if (!supabase || !isSupabaseConfigured()) return false;
 
   try {
+    const cloudAsset = stripAssetMediaForCloud(item);
+    if (!cloudAsset) {
+      return true;
+    }
+
     const { error } = await supabase.from('asset_library').upsert({
-      id: item.id,
+      id: cloudAsset.id,
       user_id: userId,
-      type: item.type,
-      name: item.name,
-      project_id: item.projectId || null,
-      project_name: item.projectName || null,
-      created_at: item.createdAt,
-      updated_at: item.updatedAt,
-      data: item.data,
+      type: cloudAsset.type,
+      name: cloudAsset.name,
+      project_id: cloudAsset.projectId || null,
+      project_name: cloudAsset.projectName || null,
+      created_at: cloudAsset.createdAt,
+      updated_at: cloudAsset.updatedAt,
+      data: cloudAsset.data,
     });
 
     if (error) {
-      console.error('[Sync] 同步资产失败:', error);
+      console.error('[Sync] 鍚屾璧勪骇澶辫触:', error);
       return false;
     }
     return true;
@@ -390,7 +418,7 @@ export async function syncAssetToCloud(
 }
 
 /**
- * 从 Supabase 获取所有资产
+ * 浠?Supabase 鑾峰彇鎵€鏈夎祫浜?
  */
 export async function fetchAllAssetsFromCloud(
   userId: string
@@ -422,7 +450,7 @@ export async function fetchAllAssetsFromCloud(
 }
 
 /**
- * 从 Supabase 删除资产
+ * 浠?Supabase 鍒犻櫎璧勪骇
  */
 export async function deleteAssetFromCloud(
   assetId: string,
@@ -448,14 +476,14 @@ export async function deleteAssetFromCloud(
 // ============================================
 
 /**
- * 标记项目为脏（需要同步）
- * 使用 debounce 延迟 2 秒后触发同步
+ * 鏍囪椤圭洰涓鸿剰锛堥渶瑕佸悓姝ワ級
+ * 浣跨敤 debounce 寤惰繜 2 绉掑悗瑙﹀彂鍚屾
  */
 export function markProjectDirty(projectId: string, project: ProjectState, userId: string): void {
   dirtyProjects.add(projectId);
 
   if (!isOnline || !isSupabaseConfigured()) {
-    // 离线：加入待处理队列
+    // 绂荤嚎锛氬姞鍏ュ緟澶勭悊闃熷垪
     addToPendingQueue({
       type: 'upsert_project',
       id: projectId,
@@ -465,11 +493,11 @@ export function markProjectDirty(projectId: string, project: ProjectState, userI
     return;
   }
 
-  // 清除之前的 timer
+  // 娓呴櫎涔嬪墠鐨?timer
   const existingTimer = syncTimers.get(projectId);
   if (existingTimer) clearTimeout(existingTimer);
 
-  // 退避延迟
+  // 閫€閬垮欢杩?
   const delay = consecutiveErrors > 0
     ? Math.min(BASE_DELAY * Math.pow(2, consecutiveErrors), 60000)
     : BASE_DELAY;
@@ -485,9 +513,12 @@ export function markProjectDirty(projectId: string, project: ProjectState, userI
 }
 
 /**
- * 标记资产为脏
+ * 鏍囪璧勪骇涓鸿剰
  */
 export function markAssetDirty(item: AssetLibraryItem, userId: string): void {
+  if (item.type !== 'character') {
+    return;
+  }
   if (!isOnline || !isSupabaseConfigured()) {
     addToPendingQueue({
       type: 'upsert_asset',
@@ -498,16 +529,16 @@ export function markAssetDirty(item: AssetLibraryItem, userId: string): void {
     return;
   }
 
-  // 资产更新频率低，直接同步
+  // 璧勪骇鏇存柊棰戠巼浣庯紝鐩存帴鍚屾
   syncAssetToCloud(item, userId);
 }
 
 // ============================================
-// 离线队列
+// 绂荤嚎闃熷垪
 // ============================================
 
 function addToPendingQueue(item: PendingSync): void {
-  // 去重：如果已有同 ID 的操作，替换为最新的
+  // 鍘婚噸锛氬鏋滃凡鏈夊悓 ID 鐨勬搷浣滐紝鏇挎崲涓烘渶鏂扮殑
   const existingIndex = pendingQueue.findIndex(
     (p) => p.id === item.id && p.type === item.type
   );
@@ -519,7 +550,7 @@ function addToPendingQueue(item: PendingSync): void {
 }
 
 /**
- * 处理离线队列中所有待同步操作
+ * 澶勭悊绂荤嚎闃熷垪涓墍鏈夊緟鍚屾鎿嶄綔
  */
 export async function flushPendingQueue(): Promise<void> {
   if (!isOnline || !isSupabaseConfigured()) return;
@@ -534,7 +565,7 @@ export async function flushPendingQueue(): Promise<void> {
       switch (item.type) {
         case 'upsert_project':
           if (item.data) {
-            // 需要获取 userId - 从 Supabase auth 获取
+            // 闇€瑕佽幏鍙?userId - 浠?Supabase auth 鑾峰彇
             const userId = await getCurrentUserId();
             if (userId) {
               await syncProjectToCloud(item.data, userId);
@@ -565,8 +596,8 @@ export async function flushPendingQueue(): Promise<void> {
         }
       }
     } catch (err) {
-      console.error('[Sync] 处理离线队列项失败:', err);
-      // 失败的操作放回队列
+      console.error('[Sync] 澶勭悊绂荤嚎闃熷垪椤瑰け璐?', err);
+      // 澶辫触鐨勬搷浣滄斁鍥為槦鍒?
       pendingQueue.push(item);
     }
   }
@@ -577,12 +608,12 @@ export async function flushPendingQueue(): Promise<void> {
 }
 
 // ============================================
-// 冲突解决
+// 鍐茬獊瑙ｅ喅
 // ============================================
 
 /**
- * 解决本地和云端版本冲突
- * 策略：lastModified 时间戳大的为准
+ * 瑙ｅ喅鏈湴鍜屼簯绔増鏈啿绐?
+ * 绛栫暐锛歭astModified 鏃堕棿鎴冲ぇ鐨勪负鍑?
  */
 export function resolveConflict(
   local: ProjectState,
@@ -595,8 +626,8 @@ export function resolveConflict(
 }
 
 /**
- * 合并项目列表（本地 + 云端去重）
- * 同 ID 的项目取 lastModified 更大的版本
+ * 鍚堝苟椤圭洰鍒楄〃锛堟湰鍦?+ 浜戠鍘婚噸锛?
+ * 鍚?ID 鐨勯」鐩彇 lastModified 鏇村ぇ鐨勭増鏈?
  */
 export function mergeProjectLists(
   localProjects: ProjectState[],
@@ -604,27 +635,31 @@ export function mergeProjectLists(
 ): ProjectState[] {
   const merged = new Map<string, ProjectState>();
 
-  // 先加入本地
+  // 鍏堝姞鍏ユ湰鍦?
   for (const p of localProjects) {
     merged.set(p.id, p);
   }
 
-  // 合并云端
+  // 鍚堝苟浜戠
   for (const p of cloudProjects) {
     const existing = merged.get(p.id);
-    if (!existing || p.lastModified > existing.lastModified) {
+    if (!existing) {
       merged.set(p.id, p);
+      continue;
+    }
+    if (p.lastModified > existing.lastModified) {
+      merged.set(p.id, mergeProjectPreservingLocalMedia(existing, p));
     }
   }
 
-  // 按 lastModified 降序排列
+  // 鎸?lastModified 闄嶅簭鎺掑垪
   return Array.from(merged.values()).sort(
     (a, b) => b.lastModified - a.lastModified
   );
 }
 
 // ============================================
-// 辅助函数
+// 杈呭姪鍑芥暟
 // ============================================
 
 async function getCurrentUserId(): Promise<string | null> {
@@ -638,7 +673,7 @@ async function getCurrentUserId(): Promise<string | null> {
 }
 
 /**
- * 将 Supabase 数据库行转换为 ProjectState
+ * 灏?Supabase 鏁版嵁搴撹杞崲涓?ProjectState
  */
 function cloudRowToProjectState(row: any): ProjectState {
   return {
@@ -649,7 +684,7 @@ function cloudRowToProjectState(row: any): ProjectState {
     stage: row.stage || 'script',
     rawScript: row.raw_script || '',
     targetDuration: row.target_duration || '60s',
-    language: row.language || '中文',
+    language: row.language || '涓枃',
     visualStyle: row.visual_style || 'live-action',
     shotGenerationModel: row.shot_generation_model || 'gpt-5.1',
     scriptData: row.script_data || null,
@@ -660,21 +695,20 @@ function cloudRowToProjectState(row: any): ProjectState {
 }
 
 /**
- * 重置同步状态（登出时调用）
+ * 閲嶇疆鍚屾鐘舵€侊紙鐧诲嚭鏃惰皟鐢級
  */
 export function resetSyncState(): void {
   dirtyProjects.clear();
   pendingQueue.length = 0;
   syncTimers.forEach((timer) => clearTimeout(timer));
   syncTimers.clear();
-  consecutiveErrors = 0;
-  clearUploadCache();
-  setStatus('idle');
+  consecutiveErrors = 0;  setStatus('idle');
 }
 
 /**
- * 检查是否有未同步的变更
+ * 妫€鏌ユ槸鍚︽湁鏈悓姝ョ殑鍙樻洿
  */
 export function hasPendingChanges(): boolean {
   return dirtyProjects.size > 0 || pendingQueue.length > 0;
 }
+
