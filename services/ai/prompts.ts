@@ -723,7 +723,7 @@ CRITICAL REQUIREMENTS:
 - Maintain STRICT character consistency across ALL panels (same face, hair, clothing, body proportions)
 - Maintain consistent lighting, color palette, and atmosphere across all panels
 - Each panel should be a complete, well-composed frame suitable for use as a keyframe
-- The overall image should read as a professional cinematographer's shot planning board\`;
+- The overall image should read as a professional cinematographer's shot planning board`;
 };
 
 // ============================================
@@ -731,13 +731,13 @@ CRITICAL REQUIREMENTS:
 // ============================================
 
 export const buildScriptParsingPrompt = (rawText: string, language: string): string => 
-  \`You are a professional screenwriter assistant. Parse the following script/story into structured data.
+  `You are a professional screenwriter assistant. Parse the following script/story into structured data.
 
 Script Text:
-\${rawText}
+${rawText}
 
 Requirements:
-- Language: \${language}
+- Language: ${language}
 - Extract: title, genre, logline, characters (with name, gender, age, personality), scenes (with location, time, atmosphere)
 - Generate story paragraphs with scene references
 
@@ -749,7 +749,7 @@ Return a valid JSON object with the structure:
   "characters": [{"id": "string", "name": "string", "gender": "string", "age": "string", "personality": "string", "variations": []}],
   "scenes": [{"id": "string", "location": "string", "time": "string", "atmosphere": "string"}],
   "storyParagraphs": [{"id": number, "text": "string", "sceneRefId": "string"}]
-}\`;
+}`;
 
 export const buildShotListGenerationPrompt = (
   language: string,
@@ -763,21 +763,21 @@ export const buildShotListGenerationPrompt = (
   totalShotsNeeded: number,
   shotsPerScene: number
 ): string => {
-  return \`You are a professional cinematographer and director.
-Language: \${language}
-Visual Style: \${stylePrompt}
-Target Total Shots: \${totalShotsNeeded}
-Approximate Shots for this Scene: \${shotsPerScene}
+  return `You are a professional cinematographer and director.
+Language: ${language}
+Visual Style: ${stylePrompt}
+Target Total Shots: ${totalShotsNeeded}
+Approximate Shots for this Scene: ${shotsPerScene}
 
-\${artDirectionBlock}
+${artDirectionBlock}
 
-Current Scene (\${index + 1}/\${scriptData.scenes.length}):
-Location: \${scene.location}
-Time: \${scene.time}
-Atmosphere: \${scene.atmosphere}
+Current Scene (${index + 1}/${scriptData.scenes.length}):
+Location: ${scene.location}
+Time: ${scene.time}
+Atmosphere: ${scene.atmosphere}
 
 Story Paragraphs for this Scene:
-\${paragraphs}
+${paragraphs}
 
 Task: Break down this scene into a list of shots.
 Each shot must have:
@@ -798,7 +798,7 @@ Return a valid JSON object:
       "characters": ["character_id"]
     }
   ]
-}\`;
+}`;
 };
 
 export const buildScriptContinuationPrompt = (existingScript: string, language: string): string => {
