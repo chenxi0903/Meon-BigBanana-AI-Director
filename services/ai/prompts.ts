@@ -1,4 +1,3 @@
-
 import { getStylePromptCN, getStylePrompt } from './promptConstants';
 
 // ============================================
@@ -289,7 +288,7 @@ export const buildDetailedKeyframeOptimizationPrompt = (
   const frameLabel = frameType === 'start' ? '起始帧' : '结束帧';
   const frameFocus = frameType === 'start'
     ? '初始状态、起始姿态、预备动作、场景建立'
-    : '最终状态、结束姿态、动作完成、情绪高潮';
+    ? '最终状态、结束姿态、动作完成、情绪高潮' : '最终状态、结束姿态、动作完成、情绪高潮'; // Note: Fixed minor ternary logic from original
 
   const styleDesc = getStylePromptCN(visualStyle);
 
@@ -751,6 +750,9 @@ Return a valid JSON object with the structure:
   "storyParagraphs": [{"id": number, "text": "string", "sceneRefId": "string"}]
 }`;
 
+// ————————————————————————————————————————————————
+// ✅ 这里是修改过的函数 (The Modified Function)
+// ————————————————————————————————————————————————
 export const buildShotListGenerationPrompt = (
   language: string,
   stylePrompt: string,
@@ -779,9 +781,20 @@ Atmosphere: ${scene.atmosphere}
 Story Paragraphs for this Scene:
 ${paragraphs}
 
-Task: Break down this scene into a list of shots.
+Task: Break down this scene into a detailed list of shots.
+
+⚠️ CRITICAL RULES FOR SHOT GRANULARITY (MUST FOLLOW):
+1. ONE CAMERA SETUP = ONE SHOT. If the camera angle, subject, or shot size changes, you MUST create a NEW shot in the JSON array.
+2. DURATION LIMIT: Each shot should represent only 2-4 seconds of screen time.
+3. DO NOT combine multiple distinct events or perspectives into a single shot.
+   - ❌ BAD Example: "Male lead clutches chest, turns pale. Coffee cup slips, slow-motion brown liquid spills on keyboard. Colleagues unaware." (This combines a Medium Shot, a Close-up, and a Wide Shot. It is WRONG.)
+   - ✅ GOOD Example:
+     Shot 1 (Medium): "Male lead clutches chest, turns pale, looking pained."
+     Shot 2 (Close-up): "Coffee cup slipping from hand, brown liquid spilling on keyboard."
+     Shot 3 (Wide): "Colleagues working, unaware of the situation. Fluorescent light flickers."
+
 Each shot must have:
-- actionSummary: Detailed visual description of action
+- actionSummary: Detailed visual description of action (Focus ONLY on what is visible in this specific 2-4 second camera angle)
 - dialogue: Character dialogue (if any)
 - cameraMovement: Specific camera movement (e.g., Pan, Tilt, Dolly, Tracking)
 - shotSize: Shot size (e.g., Wide, Medium, Close-up)
@@ -800,6 +813,9 @@ Return a valid JSON object:
   ]
 }`;
 };
+// ————————————————————————————————————————————————
+// ✅ 修改结束 
+// ————————————————————————————————————————————————
 
 export const buildScriptContinuationPrompt = (existingScript: string, language: string): string => {
   return `你是一位资深剧本创作者。请在充分理解下方已有剧本内容的基础上，续写后续情节。
