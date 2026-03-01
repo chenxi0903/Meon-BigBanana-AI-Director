@@ -42,6 +42,29 @@ const retryOperation = async <T>(
   throw lastError;
 };
 
+const parseErrorResponse = async (res: Response): Promise<string> => {
+  let errorMessage = `HTTP 错误: ${res.status}`;
+  try {
+    const errorData = await res.json();
+    errorMessage = errorData.error?.message || errorData.message || errorMessage;
+  } catch (e) {
+    const errorText = await res.text();
+    if (errorText) errorMessage = errorText;
+  }
+  return errorMessage;
+};
+
+const createHttpError = (status: number, message: string): Error & { status?: number } => {
+  const error: Error & { status?: number } = new Error(message);
+  error.status = status;
+  return error;
+};
+
+const shouldFallbackRequest = (status: number, message: string): boolean => {
+  if (status === 400 || status === 404 || status === 422) return true;
+  return /unsupported|not\s+support|invalid|unknown/i.test(message);
+};
+
 /**
  * 将 base64 图片数据转为 Blob
  */
@@ -134,15 +157,28 @@ const callJimengTextToImage = async (
     });
 
     if (!res.ok) {
-      let errorMessage = `HTTP 错误: ${res.status}`;
-      try {
-        const errorData = await res.json();
-        errorMessage = errorData.error?.message || errorData.message || errorMessage;
-      } catch (e) {
-        const errorText = await res.text();
-        if (errorText) errorMessage = errorText;
+      const errorMessage = await parseErrorResponse(res);
+      if (shouldFallbackRequest(res.status, errorMessage)) {
+        const fallbackBody: any = {
+          model: apiModel,
+          prompt: options.prompt,
+          response_format: 'url',
+        };
+        const fallbackRes = await fetch(`${apiBase}/v1/images/generations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(fallbackBody),
+        });
+        if (!fallbackRes.ok) {
+          const fallbackMessage = await parseErrorResponse(fallbackRes);
+          throw createHttpError(fallbackRes.status, fallbackMessage);
+        }
+        return await fallbackRes.json();
       }
-      throw new Error(errorMessage);
+      throw createHttpError(res.status, errorMessage);
     }
 
     return await res.json();
@@ -220,15 +256,32 @@ const callJimengImageToImage = async (
       });
 
       if (!res.ok) {
-        let errorMessage = `HTTP 错误: ${res.status}`;
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.error?.message || errorData.message || errorMessage;
-        } catch (e) {
-          const errorText = await res.text();
-          if (errorText) errorMessage = errorText;
+        const errorMessage = await parseErrorResponse(res);
+        if (shouldFallbackRequest(res.status, errorMessage)) {
+          const fallbackFormData = new FormData();
+          fallbackFormData.append('prompt', options.prompt);
+          fallbackFormData.append('model', apiModel);
+          fallbackFormData.append('response_format', 'url');
+          referenceImages.forEach((img, index) => {
+            if (img.startsWith('data:')) {
+              const blob = base64ToBlob(img);
+              fallbackFormData.append('images', blob, `image_${index}.png`);
+            }
+          });
+          const fallbackRes = await fetch(`${apiBase}/v1/images/compositions`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            body: fallbackFormData,
+          });
+          if (!fallbackRes.ok) {
+            const fallbackMessage = await parseErrorResponse(fallbackRes);
+            throw createHttpError(fallbackRes.status, fallbackMessage);
+          }
+          return await fallbackRes.json();
         }
-        throw new Error(errorMessage);
+        throw createHttpError(res.status, errorMessage);
       }
 
       return await res.json();
@@ -262,15 +315,29 @@ const callJimengImageToImage = async (
       });
 
       if (!res.ok) {
-        let errorMessage = `HTTP 错误: ${res.status}`;
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.error?.message || errorData.message || errorMessage;
-        } catch (e) {
-          const errorText = await res.text();
-          if (errorText) errorMessage = errorText;
+        const errorMessage = await parseErrorResponse(res);
+        if (shouldFallbackRequest(res.status, errorMessage)) {
+          const fallbackBody: any = {
+            model: apiModel,
+            prompt: options.prompt,
+            images: referenceImages,
+            response_format: 'url',
+          };
+          const fallbackRes = await fetch(`${apiBase}/v1/images/compositions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify(fallbackBody),
+          });
+          if (!fallbackRes.ok) {
+            const fallbackMessage = await parseErrorResponse(fallbackRes);
+            throw createHttpError(fallbackRes.status, fallbackMessage);
+          }
+          return await fallbackRes.json();
         }
-        throw new Error(errorMessage);
+        throw createHttpError(res.status, errorMessage);
       }
 
       return await res.json();
