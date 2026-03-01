@@ -1012,6 +1012,7 @@ Requirements:
 - Specific details that establish the mood and atmosphere.
 - Color palette and texture references from Art Direction.
 - Composition suggestions (wide shot, angle, etc.).
+- IMPORTANT: Keep the description concise and under 600 characters to ensure compatibility with image generation models.
 - Output ONLY the prompt text in English.`;
 };
 

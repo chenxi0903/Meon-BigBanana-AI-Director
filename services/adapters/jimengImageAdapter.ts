@@ -103,100 +103,71 @@ const callJimengTextToImage = async (
 ): Promise<string> => {
   const apiModel = model.apiModel || model.id;
   const ratio = mapAspectRatioToJimeng(options.aspectRatio || model.params.defaultAspectRatio);
-  const initialResolution = model.params.resolution || '2k';
+  const resolution = model.params.resolution || '2k';
 
-  // 截断 Prompt 以避免超过 API 限制 (通常 2000 字符左右可能导致 invalid parameter)
-  // 保留前 1500 个字符
-  const MAX_PROMPT_LENGTH = 1500;
+  // Truncate prompt if too long (Jimeng has 800 char limit)
   let finalPrompt = options.prompt;
-  if (finalPrompt.length > MAX_PROMPT_LENGTH) {
-    console.warn(`⚠️ Prompt 过长 (${finalPrompt.length} chars)，已截断至 ${MAX_PROMPT_LENGTH} chars`);
-    finalPrompt = finalPrompt.substring(0, MAX_PROMPT_LENGTH);
+  if (finalPrompt.length > 800) {
+    console.warn(`⚠️ Jimeng prompt too long (${finalPrompt.length}), truncating to 800 chars.`);
+    finalPrompt = finalPrompt.substring(0, 800);
   }
 
-  const performRequest = async (currentResolution: string) => {
-    const requestBody: any = {
-      model: apiModel,
-      prompt: finalPrompt,
-      ratio,
-      resolution: currentResolution,
-      response_format: 'url',
-    };
-
-    // 添加可选参数
-    if (model.params.negativePrompt) {
-      requestBody.negative_prompt = model.params.negativePrompt;
-    }
-    if (model.params.sampleStrength !== undefined) {
-      requestBody.sample_strength = model.params.sampleStrength;
-    }
-
-    console.log(`🖼️ 即梦文生图请求: model=${apiModel}, ratio=${ratio}, resolution=${currentResolution}`);
-
-    const response = await retryOperation(async () => {
-      const res = await fetch(`${apiBase}/v1/images/generations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!res.ok) {
-        let errorMessage = `HTTP 错误: ${res.status}`;
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.error?.message || errorData.message || errorMessage;
-        } catch (e) {
-          const errorText = await res.text();
-          if (errorText) errorMessage = errorText;
-        }
-        throw new Error(errorMessage);
-      }
-
-      return await res.json();
-    });
-
-    // 检查业务逻辑错误 (例如 ret="1000", errmsg="invalid parameter")
-    if (response.ret && response.ret !== '0' && response.ret !== 0) {
-      throw new Error(`即梦API错误: ${response.errmsg || '未知错误'} (${response.ret})`);
-    }
-
-    // 解析返回: { created, data: [{ url }] }
-    const data = response.data;
-    if (!data || data.length === 0 || !data[0].url) {
-      throw new Error('即梦图片生成失败：未返回图片数据');
-    }
-
-    const imageUrl = data[0].url;
-    console.log('✅ 即梦文生图成功，正在下载图片...');
-
-    // 下载图片转 base64
-    const base64 = await downloadImageAsBase64(imageUrl);
-    console.log('✅ 即梦图片已转换为 base64');
-    return base64;
+  const requestBody: any = {
+    model: apiModel,
+    prompt: finalPrompt,
+    ratio,
+    resolution,
+    response_format: 'url',
   };
 
-  try {
-    return await performRequest(initialResolution);
-  } catch (error: any) {
-    // 自动降级重试：如果分辨率是 2k 且遇到参数错误，尝试降级到 1k
-    // 错误码 1000 通常表示参数无效 (invalid parameter)
-    if (initialResolution === '2k' && 
-        (error.message?.includes('1000') || error.message?.includes('invalid parameter') || error.message?.includes('400'))) {
-      console.warn(`⚠️ 2k 分辨率请求失败 (${error.message})，尝试降级到 1k...`);
-      return await performRequest('1k');
-    }
-    
-    // 如果是未返回图片数据，也可能是分辨率/参数问题导致的静默失败，尝试降级
-    if (initialResolution === '2k' && error.message?.includes('未返回图片数据')) {
-      console.warn(`⚠️ 2k 分辨率请求可能失败 (${error.message})，尝试降级到 1k...`);
-      return await performRequest('1k');
+  // 添加可选参数
+  if (model.params.negativePrompt) {
+    requestBody.negative_prompt = model.params.negativePrompt;
+  }
+  if (model.params.sampleStrength !== undefined) {
+    requestBody.sample_strength = model.params.sampleStrength;
+  }
+
+  console.log(`🖼️ 即梦文生图请求: model=${apiModel}, ratio=${ratio}, resolution=${resolution}`);
+
+  const response = await retryOperation(async () => {
+    const res = await fetch(`${apiBase}/v1/images/generations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!res.ok) {
+      let errorMessage = `HTTP 错误: ${res.status}`;
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData.error?.message || errorData.message || errorMessage;
+      } catch (e) {
+        const errorText = await res.text();
+        if (errorText) errorMessage = errorText;
+      }
+      throw new Error(errorMessage);
     }
 
-    throw error;
+    return await res.json();
+  });
+
+  // 解析返回: { created, data: [{ url }] }
+  const data = response.data;
+  if (!data || data.length === 0 || !data[0].url) {
+    throw new Error('即梦图片生成失败：未返回图片数据');
   }
+
+  const imageUrl = data[0].url;
+  console.log('✅ 即梦文生图成功，正在下载图片...');
+
+  // 下载图片转 base64
+  const base64 = await downloadImageAsBase64(imageUrl);
+  console.log('✅ 即梦图片已转换为 base64');
+  return base64;
 };
 
 /**
@@ -215,6 +186,13 @@ const callJimengImageToImage = async (
   const resolution = model.params.resolution || '2k';
   const referenceImages = options.referenceImages || [];
 
+  // Truncate prompt if too long (Jimeng has 800 char limit)
+  let finalPrompt = options.prompt;
+  if (finalPrompt.length > 800) {
+    console.warn(`⚠️ Jimeng prompt too long (${finalPrompt.length}), truncating to 800 chars.`);
+    finalPrompt = finalPrompt.substring(0, 800);
+  }
+
   console.log(`🖼️ 即梦图生图请求: model=${apiModel}, ratio=${ratio}, images=${referenceImages.length}张`);
 
   // 检查参考图是否为 URL 或 base64
@@ -225,7 +203,7 @@ const callJimengImageToImage = async (
   if (hasBase64Images) {
     // 使用 multipart/form-data 上传本地图片
     const formData = new FormData();
-    formData.append('prompt', options.prompt);
+    formData.append('prompt', finalPrompt);
     formData.append('model', apiModel);
     formData.append('ratio', ratio);
     formData.append('resolution', resolution);
@@ -273,7 +251,7 @@ const callJimengImageToImage = async (
     // 使用 JSON + 远程 URL
     const requestBody: any = {
       model: apiModel,
-      prompt: options.prompt,
+      prompt: finalPrompt,
       images: referenceImages,
       ratio,
       resolution,

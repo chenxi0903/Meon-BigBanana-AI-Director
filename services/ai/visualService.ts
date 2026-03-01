@@ -247,8 +247,15 @@ Mood Keywords: ${artDirection.moodKeywords.join(', ')}
 
   const visualPrompt = await retryOperation(() => chatCompletion(prompt, model, 0.5, 1024));
 
+  // 针对 Jimeng 等模型，限制提示词长度
+  let finalVisualPrompt = visualPrompt.trim();
+  if (type === 'scene' && finalVisualPrompt.length > 600) {
+    console.warn(`⚠️ Scene prompt too long (${finalVisualPrompt.length}), truncating to 600 chars.`);
+    finalVisualPrompt = finalVisualPrompt.substring(0, 600);
+  }
+
   return {
-    visualPrompt: visualPrompt.trim(),
+    visualPrompt: finalVisualPrompt,
     negativePrompt: negativePrompt
   };
 };
