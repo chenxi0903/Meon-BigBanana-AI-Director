@@ -59,7 +59,7 @@ const PROMPT_CATEGORIES = [
     icon: <FileText className="w-4 h-4" />, 
     items: [ 
       { id: 'buildScriptParsingPrompt', title: '剧本解析 JSON', type: 'Prompt', isDefault: true, usage: '把剧本解析成结构化 JSON。', content: 'Parse the following screenplay text and strictly output a JSON object mapping scenes and dialogue...' }, 
-      { id: 'buildShotListGenPrompt', title: '场次拆分镜头', type: 'Prompt', isDefault: true, usage: '将场次拆成镜头列表（分镜生成）。', content: 'Break down this specific scene into an ordered list of camera shots...' }, 
+      { id: 'buildShotListGenerationPrompt', title: '场次拆分镜头', type: 'Prompt', isDefault: true, usage: '将场次拆成镜头列表（分镜生成）。', content: 'Break down this specific scene into an ordered list of camera shots...' }, 
       { id: 'buildScriptContinuationPrompt', title: '剧本续写', type: 'Prompt', isDefault: true, usage: '剧本续写。', content: 'Continue the story based on the preceding screenplay excerpt, maintaining tone and character voices...' }, 
       { id: 'buildScriptRewritePrompt', title: '剧本润色/改写', type: 'Prompt', isDefault: true, usage: '剧本润色/改写。', content: 'Rewrite and polish the provided dialogue and action lines to enhance emotional impact...' }, 
     ] 
