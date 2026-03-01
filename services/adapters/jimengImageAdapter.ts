@@ -149,6 +149,11 @@ const callJimengTextToImage = async (
       return await res.json();
     });
 
+    // 检查业务逻辑错误 (例如 ret="1000", errmsg="invalid parameter")
+    if (response.ret && response.ret !== '0' && response.ret !== 0) {
+      throw new Error(`即梦API错误: ${response.errmsg || '未知错误'} (${response.ret})`);
+    }
+
     // 解析返回: { created, data: [{ url }] }
     const data = response.data;
     if (!data || data.length === 0 || !data[0].url) {
@@ -174,6 +179,13 @@ const callJimengTextToImage = async (
       console.warn(`⚠️ 2k 分辨率请求失败 (${error.message})，尝试降级到 1k...`);
       return await performRequest('1k');
     }
+    
+    // 如果是未返回图片数据，也可能是分辨率/参数问题导致的静默失败，尝试降级
+    if (initialResolution === '2k' && error.message?.includes('未返回图片数据')) {
+      console.warn(`⚠️ 2k 分辨率请求可能失败 (${error.message})，尝试降级到 1k...`);
+      return await performRequest('1k');
+    }
+
     throw error;
   }
 };
