@@ -27,7 +27,7 @@ const PROMPT_CATEGORIES = [
     items: [ 
       { id: 'buildSimpleScriptParsePrompt', title: '快速脚本解析', type: 'Prompt', isDefault: true, usage: '把原始文本解析为结构化剧本 JSON（标题/角色/场景/段落）用于快速脚本解析。', content: 'You are a script parsing assistant. Extract characters, scenes, and dialogs into valid JSON format...' }, 
       { id: 'buildSimpleShotGenerationPrompt', title: '初版分镜规划', type: 'Prompt', isDefault: true, usage: '基于脚本数据生成分镜列表（shot list）用于初版分镜规划。', content: 'Generate a shot list based on the provided script. Detail the camera angles and actions...' }, 
-      { id: 'buildSimpleVisualPromptGen', title: '快速出图视觉提示词', type: 'Prompt', isDefault: false, usage: '为单个角色或场景生成视觉提示词（含负面词）用于快速出图。', content: 'Create a highly detailed image generation prompt and negative prompt for the following entity...' }, 
+      { id: 'buildSimpleVisualPromptGenerationPrompt', title: '快速出图视觉提示词', type: 'Prompt', isDefault: false, usage: '为单个角色或场景生成视觉提示词（含负面词）用于快速出图。', content: 'Create a highly detailed image generation prompt and negative prompt for the following entity...' }, 
     ] 
   }, 
   { 

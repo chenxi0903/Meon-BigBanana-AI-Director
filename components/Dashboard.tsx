@@ -150,7 +150,7 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
     return new Date(ts).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
-  const projectNameOptions = Array.from(
+  const projectNameOptions = Array.from<string>(
     new Set(
       libraryItems.map((item) => (item.projectName && item.projectName.trim()) || '未知项目')
     )
