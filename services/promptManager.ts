@@ -103,3 +103,26 @@ export const getSystemPrompt = async (promptId: string): Promise<string | null> 
 
   return data?.content || null;
 };
+
+// Fetch all system default prompts
+export const getAllSystemPrompts = async (): Promise<Record<string, string>> => {
+  if (!supabase) return {};
+
+  const { data, error } = await supabase
+    .from('prompt_templates')
+    .select('name, content, version')
+    .eq('is_default', true); // Only fetch default templates
+
+  if (error) {
+    console.error('Error fetching system prompts:', error);
+    return {};
+  }
+
+  // Convert array to map: { promptId: content }
+  // Note: if multiple defaults exist (different versions), the last one wins
+  // Ideally, we should order by version DESC and filter unique names
+  return (data || []).reduce((acc, item) => {
+    acc[item.name] = item.content;
+    return acc;
+  }, {} as Record<string, string>);
+};

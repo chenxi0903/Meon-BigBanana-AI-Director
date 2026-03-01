@@ -12,11 +12,12 @@ import {
   Image as ImageIcon,      // Visual Service 
   Sun, 
   Moon, 
-  Download    // 引入下载图标 
+  Download,   // 引入下载图标
+  RefreshCw   // 引入刷新图标
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAlert } from '../GlobalAlert';
-import { getUserPrompts, saveUserPrompt, resetUserPrompt, getSystemPrompt } from '../../services/promptManager';
+import { getUserPrompts, saveUserPrompt, resetUserPrompt, getSystemPrompt, getAllSystemPrompts } from '../../services/promptManager';
 
 // 根据提供的真实业务结构重建的数据 
 const PROMPT_CATEGORIES = [ 
@@ -97,6 +98,7 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
   const [editingContent, setEditingContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Load user prompts on mount
   useEffect(() => {
@@ -176,6 +178,20 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
     }
   };
 
+  const handleSyncSystem = async () => {
+    setIsSyncing(true);
+    try {
+      const prompts = await getAllSystemPrompts();
+      setSystemDefaults(prev => ({ ...prev, ...prompts }));
+      showAlert(`成功同步 ${Object.keys(prompts).length} 条系统提示词`, { type: 'success' });
+    } catch (e) {
+      console.error(e);
+      showAlert('同步系统提示词失败', { type: 'error' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // 深色模式状态控制 
   const [isDarkMode, setIsDarkMode] = useState(false); 
 
@@ -226,9 +242,20 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
               底层提示词管理面板
             </h1> 
             <div className="flex items-center gap-2"> 
+              {/* 同步系统提示词按钮 */}
+              <button
+                onClick={handleSyncSystem}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors mr-2 disabled:opacity-50"
+                title="从数据库同步最新的系统默认提示词"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                同步系统
+              </button>
+
               {/* 导出全部按钮 */} 
               <button 
-                onClick={handleExportAll} 
+                onClick={handleExportAll}  
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors mr-2" 
                 title="导出为 JSON 文件" 
               > 
