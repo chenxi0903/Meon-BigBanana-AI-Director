@@ -105,10 +105,19 @@ const callJimengTextToImage = async (
   const ratio = mapAspectRatioToJimeng(options.aspectRatio || model.params.defaultAspectRatio);
   const initialResolution = model.params.resolution || '2k';
 
+  // 截断 Prompt 以避免超过 API 限制 (通常 2000 字符左右可能导致 invalid parameter)
+  // 保留前 1500 个字符
+  const MAX_PROMPT_LENGTH = 1500;
+  let finalPrompt = options.prompt;
+  if (finalPrompt.length > MAX_PROMPT_LENGTH) {
+    console.warn(`⚠️ Prompt 过长 (${finalPrompt.length} chars)，已截断至 ${MAX_PROMPT_LENGTH} chars`);
+    finalPrompt = finalPrompt.substring(0, MAX_PROMPT_LENGTH);
+  }
+
   const performRequest = async (currentResolution: string) => {
     const requestBody: any = {
       model: apiModel,
-      prompt: options.prompt,
+      prompt: finalPrompt,
       ratio,
       resolution: currentResolution,
       response_format: 'url',
