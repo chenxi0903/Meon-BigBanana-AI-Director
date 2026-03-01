@@ -91,6 +91,11 @@ Genre: ${genre}
 Visual Style: ${visualStyle}
 Language: ${language}
 
+Requirements:
+- Detailed description of the environment, architecture, and lighting.
+- Specific details that establish the mood and atmosphere.
+- IMPORTANT: Keep the visualPrompt description concise and under 600 characters to ensure compatibility with image generation models.
+
 Return JSON:
 {
   "visualPrompt": "detailed description for image generation",

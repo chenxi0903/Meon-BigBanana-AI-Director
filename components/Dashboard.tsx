@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Database, Settings, Sun, Moon, LogOut, User } from 'lucide-react';
+import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Database, Settings, Sun, Moon, LogOut, User, Wrench } from 'lucide-react';
 import { ProjectState, AssetLibraryItem, Character, Scene } from '../types';
 import { getAllProjectsMetadata, createNewProjectState, deleteProjectFromDB, getAllAssetLibraryItems, deleteAssetFromLibrary, loadProjectFromDB, saveProjectToDB, exportIndexedDBData, importIndexedDBData } from '../services/storageService';
 import { applyLibraryItemToProject } from '../services/assetLibraryService';
 import { useAlert } from './GlobalAlert';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import PromptManager from './Settings/PromptManager';
 
 interface Props {
   onOpenProject: (project: ProjectState) => void;
@@ -28,6 +29,7 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
   const [assetToUse, setAssetToUse] = useState<AssetLibraryItem | null>(null);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showPromptManager, setShowPromptManager] = useState(false);
   const [isDataExporting, setIsDataExporting] = useState(false);
   const [isDataImporting, setIsDataImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -449,11 +451,25 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
                     模型配置
                   </div>
                   <div className="text-[10px] text-[var(--text-tertiary)] font-mono mt-2">管理模型与 API 设置</div>
-                </button>
-              )}
+              </button>
+            )}
 
-              <button
-                onClick={() => {
+            <button
+              onClick={() => {
+                setShowSettingsModal(false);
+                setShowPromptManager(true);
+              }}
+              className="p-4 border border-[var(--border-primary)] hover:border-[var(--border-secondary)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-colors text-left"
+            >
+              <div className="flex items-center gap-2 text-[var(--text-primary)] text-sm font-bold">
+                <Wrench className="w-4 h-4 text-[var(--accent-text)]" />
+                提示词管理
+              </div>
+              <div className="text-[10px] text-[var(--text-tertiary)] font-mono mt-2">自定义底层提示词模板</div>
+            </button>
+
+            <button
+              onClick={() => {
                   setShowSettingsModal(false);
                   setShowLibraryModal(true);
                 }}
@@ -492,6 +508,11 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
             </div>
           </div>
         </div>
+      )}
+
+      {/* Prompt Manager Modal */}
+      {showPromptManager && (
+        <PromptManager onClose={() => setShowPromptManager(false)} />
       )}
 
       {/* Asset Library Modal */}
