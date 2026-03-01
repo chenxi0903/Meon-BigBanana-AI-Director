@@ -16,6 +16,8 @@ import { setLogCallback, clearLogCallback } from './services/renderLogService';
 import { useAlert } from './components/GlobalAlert';
 import { useAuth } from './contexts/AuthContext';
 import logoImg from './meon_logo.svg';
+// Import prompt sync utility to make it available globally
+import './services/supabase/promptSync';
 
 function App() {
   const { user, loading: authLoading, isConfigured: isSupabaseConfigured } = useAuth();

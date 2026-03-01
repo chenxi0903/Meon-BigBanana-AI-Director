@@ -45,6 +45,19 @@ CREATE TABLE public.asset_library (
   data JSONB NOT NULL
 );
 
+-- 4. 提示词模板表
+CREATE TABLE public.prompt_templates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  category TEXT NOT NULL,         -- 分类：script, shot, visual, style, etc.
+  name TEXT NOT NULL,             -- 名称：buildScriptParsingPrompt, VISUAL_STYLE_PROMPTS, etc.
+  content TEXT NOT NULL,          -- 提示词内容模板
+  version TEXT DEFAULT '1.0.0',   -- 版本号
+  is_default BOOLEAN DEFAULT FALSE, -- 是否为系统默认
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(category, name, version)
+);
+
 -- ============================================
 -- Row Level Security (RLS)
 -- ============================================
@@ -52,6 +65,7 @@ CREATE TABLE public.asset_library (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.asset_library ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.prompt_templates ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: 用户只能操作自己的 Profile
 CREATE POLICY "Users can view own profile" ON public.profiles
@@ -69,6 +83,10 @@ CREATE POLICY "Users can CRUD own projects" ON public.projects
 CREATE POLICY "Users can CRUD own assets" ON public.asset_library
   FOR ALL USING (auth.uid() = user_id);
 
+-- Prompt Templates: 所有认证用户可读，仅管理员可写（这里简化为任何人可读，暂时不开放写权限给普通用户）
+CREATE POLICY "Anyone can read prompt templates" ON public.prompt_templates
+  FOR SELECT USING (true);
+
 -- ============================================
 -- 索引（优化查询性能）
 -- ============================================
@@ -76,6 +94,7 @@ CREATE POLICY "Users can CRUD own assets" ON public.asset_library
 CREATE INDEX idx_projects_user_id ON public.projects(user_id);
 CREATE INDEX idx_projects_last_modified ON public.projects(last_modified DESC);
 CREATE INDEX idx_asset_library_user_id ON public.asset_library(user_id);
+CREATE INDEX idx_prompt_templates_category_name ON public.prompt_templates(category, name);
 
 -- ============================================
 -- 自动创建 Profile 的 Trigger
