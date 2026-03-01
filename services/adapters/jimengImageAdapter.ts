@@ -42,29 +42,6 @@ const retryOperation = async <T>(
   throw lastError;
 };
 
-const parseErrorResponse = async (res: Response): Promise<string> => {
-  let errorMessage = `HTTP 错误: ${res.status}`;
-  try {
-    const errorData = await res.json();
-    errorMessage = errorData.error?.message || errorData.message || errorMessage;
-  } catch (e) {
-    const errorText = await res.text();
-    if (errorText) errorMessage = errorText;
-  }
-  return errorMessage;
-};
-
-const createHttpError = (status: number, message: string): Error & { status?: number } => {
-  const error: Error & { status?: number } = new Error(message);
-  error.status = status;
-  return error;
-};
-
-const shouldFallbackRequest = (status: number, message: string): boolean => {
-  if (status === 400 || status === 404 || status === 422) return true;
-  return /unsupported|not\s+support|invalid|unknown/i.test(message);
-};
-
 /**
  * 将 base64 图片数据转为 Blob
  */
@@ -126,77 +103,79 @@ const callJimengTextToImage = async (
 ): Promise<string> => {
   const apiModel = model.apiModel || model.id;
   const ratio = mapAspectRatioToJimeng(options.aspectRatio || model.params.defaultAspectRatio);
-  const resolution = model.params.resolution || '2k';
+  const initialResolution = model.params.resolution || '2k';
 
-  const requestBody: any = {
-    model: apiModel,
-    prompt: options.prompt,
-    ratio,
-    resolution,
-    response_format: 'url',
-  };
+  const performRequest = async (currentResolution: string) => {
+    const requestBody: any = {
+      model: apiModel,
+      prompt: options.prompt,
+      ratio,
+      resolution: currentResolution,
+      response_format: 'url',
+    };
 
-  // 添加可选参数
-  if (model.params.negativePrompt) {
-    requestBody.negative_prompt = model.params.negativePrompt;
-  }
-  if (model.params.sampleStrength !== undefined) {
-    requestBody.sample_strength = model.params.sampleStrength;
-  }
-
-  console.log(`🖼️ 即梦文生图请求: model=${apiModel}, ratio=${ratio}, resolution=${resolution}`);
-
-  const response = await retryOperation(async () => {
-    const res = await fetch(`${apiBase}/v1/images/generations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!res.ok) {
-      const errorMessage = await parseErrorResponse(res);
-      if (shouldFallbackRequest(res.status, errorMessage)) {
-        const fallbackBody: any = {
-          model: apiModel,
-          prompt: options.prompt,
-          response_format: 'url',
-        };
-        const fallbackRes = await fetch(`${apiBase}/v1/images/generations`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify(fallbackBody),
-        });
-        if (!fallbackRes.ok) {
-          const fallbackMessage = await parseErrorResponse(fallbackRes);
-          throw createHttpError(fallbackRes.status, fallbackMessage);
-        }
-        return await fallbackRes.json();
-      }
-      throw createHttpError(res.status, errorMessage);
+    // 添加可选参数
+    if (model.params.negativePrompt) {
+      requestBody.negative_prompt = model.params.negativePrompt;
+    }
+    if (model.params.sampleStrength !== undefined) {
+      requestBody.sample_strength = model.params.sampleStrength;
     }
 
-    return await res.json();
-  });
+    console.log(`🖼️ 即梦文生图请求: model=${apiModel}, ratio=${ratio}, resolution=${currentResolution}`);
 
-  // 解析返回: { created, data: [{ url }] }
-  const data = response.data;
-  if (!data || data.length === 0 || !data[0].url) {
-    throw new Error('即梦图片生成失败：未返回图片数据');
+    const response = await retryOperation(async () => {
+      const res = await fetch(`${apiBase}/v1/images/generations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        let errorMessage = `HTTP 错误: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error?.message || errorData.message || errorMessage;
+        } catch (e) {
+          const errorText = await res.text();
+          if (errorText) errorMessage = errorText;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await res.json();
+    });
+
+    // 解析返回: { created, data: [{ url }] }
+    const data = response.data;
+    if (!data || data.length === 0 || !data[0].url) {
+      throw new Error('即梦图片生成失败：未返回图片数据');
+    }
+
+    const imageUrl = data[0].url;
+    console.log('✅ 即梦文生图成功，正在下载图片...');
+
+    // 下载图片转 base64
+    const base64 = await downloadImageAsBase64(imageUrl);
+    console.log('✅ 即梦图片已转换为 base64');
+    return base64;
+  };
+
+  try {
+    return await performRequest(initialResolution);
+  } catch (error: any) {
+    // 自动降级重试：如果分辨率是 2k 且遇到参数错误，尝试降级到 1k
+    // 错误码 1000 通常表示参数无效 (invalid parameter)
+    if (initialResolution === '2k' && 
+        (error.message?.includes('1000') || error.message?.includes('invalid parameter') || error.message?.includes('400'))) {
+      console.warn(`⚠️ 2k 分辨率请求失败 (${error.message})，尝试降级到 1k...`);
+      return await performRequest('1k');
+    }
+    throw error;
   }
-
-  const imageUrl = data[0].url;
-  console.log('✅ 即梦文生图成功，正在下载图片...');
-
-  // 下载图片转 base64
-  const base64 = await downloadImageAsBase64(imageUrl);
-  console.log('✅ 即梦图片已转换为 base64');
-  return base64;
 };
 
 /**
@@ -256,32 +235,15 @@ const callJimengImageToImage = async (
       });
 
       if (!res.ok) {
-        const errorMessage = await parseErrorResponse(res);
-        if (shouldFallbackRequest(res.status, errorMessage)) {
-          const fallbackFormData = new FormData();
-          fallbackFormData.append('prompt', options.prompt);
-          fallbackFormData.append('model', apiModel);
-          fallbackFormData.append('response_format', 'url');
-          referenceImages.forEach((img, index) => {
-            if (img.startsWith('data:')) {
-              const blob = base64ToBlob(img);
-              fallbackFormData.append('images', blob, `image_${index}.png`);
-            }
-          });
-          const fallbackRes = await fetch(`${apiBase}/v1/images/compositions`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-            },
-            body: fallbackFormData,
-          });
-          if (!fallbackRes.ok) {
-            const fallbackMessage = await parseErrorResponse(fallbackRes);
-            throw createHttpError(fallbackRes.status, fallbackMessage);
-          }
-          return await fallbackRes.json();
+        let errorMessage = `HTTP 错误: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error?.message || errorData.message || errorMessage;
+        } catch (e) {
+          const errorText = await res.text();
+          if (errorText) errorMessage = errorText;
         }
-        throw createHttpError(res.status, errorMessage);
+        throw new Error(errorMessage);
       }
 
       return await res.json();
@@ -315,29 +277,15 @@ const callJimengImageToImage = async (
       });
 
       if (!res.ok) {
-        const errorMessage = await parseErrorResponse(res);
-        if (shouldFallbackRequest(res.status, errorMessage)) {
-          const fallbackBody: any = {
-            model: apiModel,
-            prompt: options.prompt,
-            images: referenceImages,
-            response_format: 'url',
-          };
-          const fallbackRes = await fetch(`${apiBase}/v1/images/compositions`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(fallbackBody),
-          });
-          if (!fallbackRes.ok) {
-            const fallbackMessage = await parseErrorResponse(fallbackRes);
-            throw createHttpError(fallbackRes.status, fallbackMessage);
-          }
-          return await fallbackRes.json();
+        let errorMessage = `HTTP 错误: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error?.message || errorData.message || errorMessage;
+        } catch (e) {
+          const errorText = await res.text();
+          if (errorText) errorMessage = errorText;
         }
-        throw createHttpError(res.status, errorMessage);
+        throw new Error(errorMessage);
       }
 
       return await res.json();
