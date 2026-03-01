@@ -136,30 +136,14 @@ Return a valid JSON object:
   ]
 }', '1.0.0', true),
 
-('prompt_builder', 'buildSimpleVisualPromptGenerationPrompt_Character', 'Generate a detailed visual prompt for this character:
-Name: ${data.name}
-Gender: ${data.gender}
-Age: ${data.age}
-Personality: ${data.personality}
+('prompt_builder', 'buildSimpleVisualPromptGenerationPrompt', 'Generate a detailed visual prompt for this ${type === ''character'' ? ''character'' : ''scene''}:
+${type === ''character'' ? ''Name: '' + data.name + ''\nGender: '' + data.gender + ''\nAge: '' + data.age + ''\nPersonality: '' + data.personality : ''Location: '' + data.location + ''\nTime: '' + data.time + ''\nAtmosphere: '' + data.atmosphere}
 
 Genre: ${genre}
 Visual Style: ${visualStyle}
 Language: ${language}
 
-Return JSON:
-{
-  "visualPrompt": "detailed description for image generation",
-  "negativePrompt": "elements to avoid"
-}', '1.0.0', true),
-
-('prompt_builder', 'buildSimpleVisualPromptGenerationPrompt_Scene', 'Generate a detailed visual prompt for this scene:
-Location: ${data.location}
-Time: ${data.time}
-Atmosphere: ${data.atmosphere}
-
-Genre: ${genre}
-Visual Style: ${visualStyle}
-Language: ${language}
+${type === ''scene'' ? ''Requirements:\n- Detailed description of the environment, architecture, and lighting.\n- Specific details that establish the mood and atmosphere.\n- IMPORTANT: Keep the visualPrompt description concise and under 600 characters to ensure compatibility with image generation models.\n'' : ''''}
 
 Return JSON:
 {
