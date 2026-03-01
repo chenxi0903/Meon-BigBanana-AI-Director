@@ -82,6 +82,9 @@ interface PromptManagerProps {
   onClose: () => void;
 }
 
+// Global cache for system prompts to avoid redundant fetches
+let cachedSystemPrompts: Record<string, string> | null = null;
+
 export default function PromptManager({ onClose }: PromptManagerProps) { 
   const { user } = useAuth();
   const { showAlert } = useAlert();
@@ -100,10 +103,23 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
   const [isResetting, setIsResetting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Load user prompts on mount
+  // Load user prompts on mount and sync system defaults
   useEffect(() => {
     if (user) {
       getUserPrompts(user.id).then(setUserPrompts);
+    }
+    
+    // Check global cache first
+    if (cachedSystemPrompts) {
+      setSystemDefaults(cachedSystemPrompts);
+    } else {
+      // Auto-fetch system prompts on mount if not cached
+      getAllSystemPrompts().then(prompts => {
+        if (Object.keys(prompts).length > 0) {
+          cachedSystemPrompts = prompts; // Update global cache
+          setSystemDefaults(prompts);
+        }
+      });
     }
   }, [user]);
 
@@ -182,6 +198,7 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
     setIsSyncing(true);
     try {
       const prompts = await getAllSystemPrompts();
+      cachedSystemPrompts = prompts; // Update cache
       setSystemDefaults(prev => ({ ...prev, ...prompts }));
       showAlert(`成功同步 ${Object.keys(prompts).length} 条系统提示词`, { type: 'success' });
     } catch (e) {
