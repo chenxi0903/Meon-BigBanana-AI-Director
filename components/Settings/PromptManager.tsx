@@ -38,8 +38,8 @@ const PROMPT_CATEGORIES = [
       { id: 'buildShotSplitPrompt', title: '子镜头拆分', type: 'Prompt', isDefault: true, usage: '把单个镜头拆成多个子镜头，输出子镜头要点。', content: 'Split this single continuous shot into smaller sequential sub-shots...' }, 
       { id: 'buildKeyframeOptimizationPrompt', title: '优化关键帧提示词', type: 'Prompt', isDefault: true, usage: '优化单个关键帧提示词，用于提升图像生成质量。', content: 'Enhance this visual prompt to maximize AI image generation quality, focusing on lighting and detail...' }, 
       { id: 'buildOptimizeBothKeyframesPrompt', title: '双关键帧视觉描述', type: 'Prompt', isDefault: true, usage: '同时生成起始帧+结束帧的详细视觉描述。', content: 'Simultaneously generate rich visual descriptions for both the starting and ending keyframes...' }, 
-      { id: 'buildDetailedKeyframeOptPrompt', title: '细粒度关键帧优化', type: 'Prompt', isDefault: true, usage: '更细粒度地优化起始/结束帧描述。', content: 'Provide microscopic detail optimization for the keyframes, including camera lens specifications...' }, 
-      { id: 'buildDetailedActionSugPrompt', title: '更丰富的动作建议', type: 'Prompt', isDefault: true, usage: '基于参考示例生成更丰富的动作建议。', content: 'Analyze the reference examples and propose dynamic, character-specific acting suggestions...' }, 
+      { id: 'buildDetailedKeyframeOptimizationPrompt', title: '细粒度关键帧优化', type: 'Prompt', isDefault: true, usage: '更细粒度地优化起始/结束帧描述。', content: 'Provide microscopic detail optimization for the keyframes, including camera lens specifications...' }, 
+      { id: 'buildDetailedActionSuggestionPrompt', title: '更丰富的动作建议', type: 'Prompt', isDefault: true, usage: '基于参考示例生成更丰富的动作建议。', content: 'Analyze the reference examples and propose dynamic, character-specific acting suggestions...' }, 
       { id: 'buildDetailedShotSplitPrompt', title: '严格镜头拆分', type: 'Prompt', isDefault: true, usage: '更严格、更丰富地拆分镜头动作。', content: 'Strictly divide the action sequence, ensuring absolute continuity between sub-shots...' }, 
       { id: 'buildKeyframeEnhancementPrompt', title: '技术规格视觉增强', type: 'Prompt', isDefault: true, usage: '在基础提示词上加技术规格/视觉细节增强。', content: 'Append cinematic technical specifications (e.g., 35mm lens, volumetric lighting) to the base prompt...' }, 
     ] 

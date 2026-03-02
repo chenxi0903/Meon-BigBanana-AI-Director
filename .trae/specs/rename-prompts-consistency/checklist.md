@@ -1,0 +1,2 @@
+- [x] `PromptManager.tsx` uses `buildDetailedKeyframeOptimizationPrompt` as ID
+- [x] `PromptManager.tsx` uses `buildDetailedActionSuggestionPrompt` as ID
