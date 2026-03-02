@@ -18,6 +18,7 @@ import {
   AuthResult,
 } from '../services/supabase/authService';
 import { initializeCloudSync } from '../services/modelRegistry';
+import { initializePromptCache, clearPromptCache } from '../services/promptManager';
 
 // ============================================
 // 类型定义
@@ -83,6 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // 初始化云端同步
           initializeCloudSync(currentSession?.user?.id ?? null);
+          
+          // 初始化提示词缓存
+          if (currentSession?.user) {
+            initializePromptCache(currentSession.user.id);
+          } else {
+            clearPromptCache();
+          }
 
           if (currentSession?.user) {
             await loadProfile(currentSession.user.id);
@@ -106,8 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
         loadProfile(newSession.user.id);
+        initializePromptCache(newSession.user.id); // 更新提示词缓存
       } else {
         setProfile(null);
+        clearPromptCache(); // 清除提示词缓存
       }
     });
 
@@ -139,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSession(null);
       setProfile(null);
+      clearPromptCache(); // 清除提示词缓存
     }
     return result;
   }, []);

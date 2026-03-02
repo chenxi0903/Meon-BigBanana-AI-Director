@@ -1,4 +1,5 @@
 import { getStylePromptCN, getStylePrompt } from './promptConstants';
+import { getEffectivePrompt } from '../promptManager';
 
 // ============================================
 // Simple Model Service Prompts (for modelService.ts)
@@ -65,31 +66,31 @@ export const buildSimpleVisualPromptGenerationPrompt = (options: {
 }): string => {
   const { type, data, genre, visualStyle, language } = options;
   
-  if (type === 'character') {
-    return `Generate a detailed visual prompt for this character:
-Name: ${data.name}
-Gender: ${data.gender}
-Age: ${data.age}
-Personality: ${data.personality}
+  // 1. 获取默认模板
+  const defaultTemplate = type === 'character' 
+    ? `Generate a detailed visual prompt for this character:
+Name: \${data.name}
+Gender: \${data.gender}
+Age: \${data.age}
+Personality: \${data.personality}
 
-Genre: ${genre}
-Visual Style: ${visualStyle}
-Language: ${language}
+Genre: \${genre}
+Visual Style: \${visualStyle}
+Language: \${language}
 
 Return JSON:
 {
   "visualPrompt": "detailed description for image generation",
   "negativePrompt": "elements to avoid"
-}`;
-  } else {
-    return `Generate a detailed visual prompt for this scene:
-Location: ${data.location}
-Time: ${data.time}
-Atmosphere: ${data.atmosphere}
+}`
+    : `Generate a detailed visual prompt for this scene:
+Location: \${data.location}
+Time: \${data.time}
+Atmosphere: \${data.atmosphere}
 
-Genre: ${genre}
-Visual Style: ${visualStyle}
-Language: ${language}
+Genre: \${genre}
+Visual Style: \${visualStyle}
+Language: \${language}
 
 Requirements:
 - Detailed description of the environment, architecture, and lighting.
@@ -101,7 +102,43 @@ Return JSON:
   "visualPrompt": "detailed description for image generation",
   "negativePrompt": "elements to avoid"
 }`;
+
+  // 2. 尝试获取用户覆盖的模板 (ID: buildSimpleVisualPromptGenerationPrompt)
+  // 注意：用户模板中需要包含 ${variable} 形式的占位符，我们需要手动进行简单的字符串替换
+  let template = getEffectivePrompt('buildSimpleVisualPromptGenerationPrompt', defaultTemplate);
+
+  // 3. 执行简单的模板替换 (Simple Template Engine)
+  // 将 ${data.name} 替换为实际值
+  const replacePlaceholder = (tmpl: string, key: string, value: any) => {
+    // 替换 ${key}
+    return tmpl.split(`\${${key}}`).join(String(value || ''));
+  };
+
+  let result = template;
+  result = replacePlaceholder(result, 'type', type);
+  result = replacePlaceholder(result, 'genre', genre);
+  result = replacePlaceholder(result, 'visualStyle', visualStyle);
+  result = replacePlaceholder(result, 'language', language);
+  // Also support direct usage of data properties in top level (for simpler user templates)
+  if (data) {
+    result = replacePlaceholder(result, 'name', data.name);
+    result = replacePlaceholder(result, 'gender', data.gender);
+    result = replacePlaceholder(result, 'age', data.age);
+    result = replacePlaceholder(result, 'personality', data.personality);
+    result = replacePlaceholder(result, 'location', data.location);
+    result = replacePlaceholder(result, 'time', data.time);
+    result = replacePlaceholder(result, 'atmosphere', data.atmosphere);
   }
+
+  // Flatten data object for easier replacement (e.g., ${data.name} -> ${name} or support both)
+  // Our default template uses ${data.name}, but user might write ${name}
+  if (data) {
+    Object.keys(data).forEach(key => {
+      result = replacePlaceholder(result, `data.${key}`, data[key]);
+    });
+  }
+
+  return result;
 };
 
 export const buildActionSuggestionPrompt = (options: {

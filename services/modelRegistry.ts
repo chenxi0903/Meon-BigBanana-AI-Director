@@ -284,12 +284,13 @@ export const loadRegistry = (): ModelRegistryState => {
 };
 
 /**
- * 保存状态到 localStorage
+ * 保存状态到 localStorage 并触发云端同步
  */
 export const saveRegistry = (state: ModelRegistryState): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     registryState = state;
+    triggerCloudSync();
   } catch (e) {
     console.error('保存模型注册中心失败:', e);
   }

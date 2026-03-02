@@ -126,3 +126,32 @@ export const getAllSystemPrompts = async (): Promise<Record<string, string>> => 
     return acc;
   }, {} as Record<string, string>);
 };
+
+// Global in-memory cache for prompt overrides
+let globalPromptCache: Record<string, string> = {};
+
+// Initialize/Update cache with user prompts
+export const initializePromptCache = async (userId: string) => {
+  const userPrompts = await getUserPrompts(userId);
+  globalPromptCache = userPrompts;
+};
+
+// Clear cache
+export const clearPromptCache = () => {
+  globalPromptCache = {};
+};
+
+// Get effective prompt (User Override > System Default > Hardcoded Fallback)
+export const getEffectivePrompt = (
+  promptId: string, 
+  fallbackContent: string
+): string => {
+  // 1. Check user override in cache
+  if (globalPromptCache[promptId]) {
+    return globalPromptCache[promptId];
+  }
+  
+  // 2. Return fallback (System defaults should be synced to code or handled otherwise, 
+  // but for now we rely on the caller providing the hardcoded fallback)
+  return fallbackContent;
+};
