@@ -223,6 +223,7 @@ export const loadRegistry = (): ModelRegistryState => {
           parsed.models[existingIndex] = {
             ...bm,
             isEnabled: existing.isEnabled,
+            apiKey: existing.apiKey,
             params: mergedParams as any,
           };
         }
