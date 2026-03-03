@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAlert } from '../GlobalAlert';
-import { getUserPrompts, saveUserPrompt, resetUserPrompt, getSystemPrompt, getAllSystemPrompts } from '../../services/promptManager';
+import { getUserPrompts, saveUserPrompt, resetUserPrompt, getSystemPrompt, getAllSystemPrompts, setPromptOverrideCache, clearPromptOverrideCache } from '../../services/promptManager';
 
 // 根据提供的真实业务结构重建的数据 
 const PROMPT_CATEGORIES = [ 
@@ -141,6 +141,7 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
     try {
       await saveUserPrompt(user.id, selectedId, editingContent);
       setUserPrompts(prev => ({ ...prev, [selectedId]: editingContent }));
+      setPromptOverrideCache(selectedId, editingContent);
       showAlert('保存成功', { type: 'success' });
     } catch (e) {
       console.error(e);
@@ -166,6 +167,7 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
     try {
       // 1. Delete user override
       await resetUserPrompt(user.id, selectedId);
+      clearPromptOverrideCache(selectedId);
       
       // 2. Fetch system default from DB
       const sysContent = await getSystemPrompt(selectedId);

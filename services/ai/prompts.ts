@@ -1,12 +1,34 @@
 import { getStylePromptCN, getStylePrompt } from './promptConstants';
 import { getEffectivePrompt } from '../promptManager';
 
+type TemplateVars = Record<string, any>;
+
+const getTemplateValue = (vars: TemplateVars, path: string): any => {
+  const parts = path.split('.').map(p => p.trim()).filter(Boolean);
+  let current: any = vars;
+  for (const part of parts) {
+    if (current == null) return undefined;
+    current = current[part];
+  }
+  return current;
+};
+
+const applyTemplate = (template: string, vars: TemplateVars): string => {
+  const replaced = template.replace(/\$\{([^}]+)\}/g, (match, expr, offset, full) => {
+    if (offset > 0 && full[offset - 1] === '\\') return match;
+    const key = String(expr || '').trim();
+    const value = getTemplateValue(vars, key);
+    return value == null ? '' : String(value);
+  });
+  return replaced.replace(/\\\$\{/g, '${');
+};
+
 // ============================================
 // Simple Model Service Prompts (for modelService.ts)
 // ============================================
 
-export const buildSimpleScriptParsePrompt = (rawText: string, language: string, visualStyle: string): string => 
-  `You are a professional screenwriter assistant. Parse the following script/story into structured data.
+export const buildSimpleScriptParsePrompt = (rawText: string, language: string, visualStyle: string): string => {
+  const fallback = `You are a professional screenwriter assistant. Parse the following script/story into structured data.
 
 Script Text:
 ${rawText}
@@ -26,9 +48,12 @@ Return a valid JSON object with the structure:
   "scenes": [{"id": "string", "location": "string", "time": "string", "atmosphere": "string"}],
   "storyParagraphs": [{"id": number, "text": "string", "sceneRefId": "string"}]
 }`;
+  const template = getEffectivePrompt('buildSimpleScriptParsePrompt', fallback);
+  return applyTemplate(template, { rawText, language, visualStyle });
+};
 
-export const buildSimpleShotGenerationPrompt = (scriptData: any): string => 
-  `You are a professional film director. Generate a shot list for the following script.
+export const buildSimpleShotGenerationPrompt = (scriptData: any): string => {
+  const fallback = `You are a professional film director. Generate a shot list for the following script.
 
 Script Data:
 ${JSON.stringify(scriptData, null, 2)}
@@ -56,6 +81,12 @@ Return a valid JSON object:
     }
   ]
 }`;
+  const template = getEffectivePrompt('buildSimpleShotGenerationPrompt', fallback);
+  return applyTemplate(template, {
+    scriptData,
+    scriptDataJson: JSON.stringify(scriptData, null, 2),
+  });
+};
 
 export const buildSimpleVisualPromptGenerationPrompt = (options: {
   type: 'character' | 'scene';
@@ -66,7 +97,6 @@ export const buildSimpleVisualPromptGenerationPrompt = (options: {
 }): string => {
   const { type, data, genre, visualStyle, language } = options;
   
-  // 1. 获取默认模板
   const defaultTemplate = type === 'character' 
     ? `Generate a detailed visual prompt for this character:
 Name: \${data.name}
@@ -103,64 +133,40 @@ Return JSON:
   "negativePrompt": "elements to avoid"
 }`;
 
-  // 2. 尝试获取用户覆盖的模板 (ID: buildSimpleVisualPromptGenerationPrompt)
-  // 注意：用户模板中需要包含 ${variable} 形式的占位符，我们需要手动进行简单的字符串替换
-  let template = getEffectivePrompt('buildSimpleVisualPromptGenerationPrompt', defaultTemplate);
-
-  // 3. 执行简单的模板替换 (Simple Template Engine)
-  // 将 ${data.name} 替换为实际值
-  const replacePlaceholder = (tmpl: string, key: string, value: any) => {
-    // 替换 ${key}
-    return tmpl.split(`\${${key}}`).join(String(value || ''));
-  };
-
-  let result = template;
-  result = replacePlaceholder(result, 'type', type);
-  result = replacePlaceholder(result, 'genre', genre);
-  result = replacePlaceholder(result, 'visualStyle', visualStyle);
-  result = replacePlaceholder(result, 'language', language);
-  // Also support direct usage of data properties in top level (for simpler user templates)
-  if (data) {
-    result = replacePlaceholder(result, 'name', data.name);
-    result = replacePlaceholder(result, 'gender', data.gender);
-    result = replacePlaceholder(result, 'age', data.age);
-    result = replacePlaceholder(result, 'personality', data.personality);
-    result = replacePlaceholder(result, 'location', data.location);
-    result = replacePlaceholder(result, 'time', data.time);
-    result = replacePlaceholder(result, 'atmosphere', data.atmosphere);
-  }
-
-  // Flatten data object for easier replacement (e.g., ${data.name} -> ${name} or support both)
-  // Our default template uses ${data.name}, but user might write ${name}
-  if (data) {
-    Object.keys(data).forEach(key => {
-      result = replacePlaceholder(result, `data.${key}`, data[key]);
-    });
-  }
-
-  return result;
+  const template = getEffectivePrompt('buildSimpleVisualPromptGenerationPrompt', defaultTemplate);
+  return applyTemplate(template, {
+    type,
+    genre,
+    visualStyle,
+    language,
+    data,
+    ...(data && typeof data === 'object' ? data : {}),
+  });
 };
 
 export const buildActionSuggestionPrompt = (options: {
   startFramePrompt: string;
   endFramePrompt: string;
   cameraMovement: string;
-}): string => 
-  `Suggest an action description connecting these keyframes:
+}): string => {
+  const fallback = `Suggest an action description connecting these keyframes:
 
 Start Frame: ${options.startFramePrompt}
 End Frame: ${options.endFramePrompt}
 Camera Movement: ${options.cameraMovement}
 
 Generate a concise action summary describing the transition. Return only the action text.`;
+  const template = getEffectivePrompt('buildActionSuggestionPrompt', fallback);
+  return applyTemplate(template, { ...options });
+};
 
 export const buildShotSplitPrompt = (options: {
   shot: any;
   sceneInfo: string;
   characterNames: string[];
   visualStyle: string;
-}): string => 
-  `Split this shot into multiple sub-shots:
+}): string => {
+  const fallback = `Split this shot into multiple sub-shots:
 
 Shot: ${JSON.stringify(options.shot)}
 Scene: ${options.sceneInfo}
@@ -177,6 +183,13 @@ Return JSON:
     }
   ]
 }`;
+  const template = getEffectivePrompt('buildShotSplitPrompt', fallback);
+  return applyTemplate(template, {
+    ...options,
+    shotJson: JSON.stringify(options.shot),
+    characterNamesCsv: options.characterNames.join(', '),
+  });
+};
 
 export const buildKeyframeOptimizationPrompt = (options: {
   frameType: 'start' | 'end';
@@ -185,8 +198,8 @@ export const buildKeyframeOptimizationPrompt = (options: {
   sceneInfo: string;
   characterInfo: string;
   visualStyle: string;
-}): string => 
-  `Optimize this keyframe prompt for ${options.frameType} frame:
+}): string => {
+  const fallback = `Optimize this keyframe prompt for ${options.frameType} frame:
 
 Action: ${options.actionSummary}
 Camera: ${options.cameraMovement}
@@ -195,6 +208,9 @@ Characters: ${options.characterInfo}
 Visual Style: ${options.visualStyle}
 
 Generate a detailed, cinematic prompt for image generation. Return only the prompt text.`;
+  const template = getEffectivePrompt('buildKeyframeOptimizationPrompt', fallback);
+  return applyTemplate(template, { ...options });
+};
 
 // ============================================
 // Shot Service Prompts (Advanced)
@@ -208,7 +224,7 @@ export const buildOptimizeBothKeyframesPrompt = (
   visualStyle: string
 ): string => {
   const styleDesc = getStylePromptCN(visualStyle);
-  return `
+  const fallback = `
 你是一位专业的电影视觉导演和概念艺术家。请为以下镜头同时创作起始帧和结束帧的详细视觉描述。
 
 ## 场景信息
@@ -317,6 +333,16 @@ ${styleDesc}
 
 请开始创作：
 `;
+  const template = getEffectivePrompt('buildOptimizeBothKeyframesPrompt', fallback);
+  return applyTemplate(template, {
+    sceneInfo,
+    actionSummary,
+    cameraMovement,
+    characterInfo,
+    characterInfoJoined: characterInfo.length > 0 ? characterInfo.join('、') : '',
+    visualStyle,
+    styleDesc,
+  });
 };
 
 export const buildDetailedKeyframeOptimizationPrompt = (
@@ -334,7 +360,7 @@ export const buildDetailedKeyframeOptimizationPrompt = (
 
   const styleDesc = getStylePromptCN(visualStyle);
 
-  return `
+  const fallback = `
 你是一位专业的电影视觉导演和概念艺术家。请为以下镜头的${frameLabel}创作详细的视觉描述。
 
 ## 场景信息
@@ -429,6 +455,19 @@ ${frameType === 'start' ? `
 
 请开始创作这一帧的视觉描述：
 `;
+  const template = getEffectivePrompt('buildDetailedKeyframeOptimizationPrompt', fallback);
+  return applyTemplate(template, {
+    frameType,
+    frameLabel,
+    frameFocus,
+    actionSummary,
+    cameraMovement,
+    sceneInfo,
+    characterInfo,
+    characterInfoJoined: characterInfo.length > 0 ? characterInfo.join('、') : '',
+    visualStyle,
+    styleDesc,
+  });
 };
 
 export const buildDetailedActionSuggestionPrompt = (
@@ -461,7 +500,7 @@ export const buildDetailedActionSuggestionPrompt = (
 镜头在倾盆大雨中快速抖动向前推进，对准在黑暗海平面中屹立不动的黑影。几道闪电快速划过，轮廓在雨幕中若隐若现。突然，一股巨大的雷暴能量在他身后快速汇聚，光芒猛烈爆发。镜头立刻快速向地面猛冲，并同时向上极度仰起，锁定他被能量光芒完全照亮的、张开双臂的威严姿态。
 `;
 
-  return `
+  const fallback = `
 你是一位专业的电影动作导演和叙事顾问。请根据提供的首帧和尾帧信息，结合镜头运动，设计一个既符合叙事逻辑又充满视觉冲击力的动作场景。
 
 ## 重要约束
@@ -498,6 +537,8 @@ ${actionReferenceExamples}
 
 请开始创作：
 `;
+  const template = getEffectivePrompt('buildDetailedActionSuggestionPrompt', fallback);
+  return applyTemplate(template, { startFramePrompt, endFramePrompt, cameraMovement, actionReferenceExamples });
 };
 
 export const buildDetailedShotSplitPrompt = (
@@ -508,7 +549,7 @@ export const buildDetailedShotSplitPrompt = (
 ): string => {
   const styleDesc = getStylePromptCN(visualStyle);
 
-  return `
+  const fallback = `
 你是一位专业的电影分镜师和导演。你的任务是将一个粗略的镜头描述，拆分为多个细致、专业的子镜头。
 
 ## 原始镜头信息
@@ -610,6 +651,16 @@ ${shot.dialogue ? `**对白：** "${shot.dialogue}"
 
 请开始拆分，直接输出JSON格式（不要包含markdown代码块标记）：
 `;
+  const template = getEffectivePrompt('buildDetailedShotSplitPrompt', fallback);
+  return applyTemplate(template, {
+    shot,
+    shotJson: JSON.stringify(shot),
+    sceneInfo,
+    characterNames,
+    characterNamesJoined: characterNames.length > 0 ? characterNames.join('、') : '',
+    visualStyle,
+    styleDesc,
+  });
 };
 
 export const buildKeyframeEnhancementPrompt = (
@@ -621,7 +672,7 @@ export const buildKeyframeEnhancementPrompt = (
   const styleDesc = getStylePromptCN(visualStyle);
   const frameLabel = frameType === 'start' ? '起始帧' : '结束帧';
 
-  return `
+  const fallback = `
 你是一位资深的电影摄影指导和视觉特效专家。请基于以下基础提示词,生成一个包含详细技术规格和视觉细节的专业级${frameLabel}描述。
 
 ## 基础提示词
@@ -693,6 +744,8 @@ ${frameType === 'start' ? '建立清晰的初始状态、起始姿态、为后�
 
 请开始创作:
 `;
+  const template = getEffectivePrompt('buildKeyframeEnhancementPrompt', fallback);
+  return applyTemplate(template, { basePrompt, visualStyle, cameraMovement, frameType, frameLabel, styleDesc });
 };
 
 export const buildNineGridPanelsPrompt = (
@@ -739,7 +792,18 @@ export const buildNineGridPanelsPrompt = (
 
 注意：必须恰好返回9个panel（index 0-8），按照九宫格从左到右、从上到下的顺序排列。`;
 
-  return `${systemPrompt}\n\n${userPrompt}`;
+  const fallback = `${systemPrompt}\n\n${userPrompt}`;
+  const template = getEffectivePrompt('buildNineGridPanelsPrompt', fallback);
+  return applyTemplate(template, {
+    actionSummary,
+    cameraMovement,
+    sceneInfo,
+    characterNames,
+    characterNamesJoined: characterNames.length > 0 ? characterNames.join('、') : '',
+    visualStyle,
+    systemPrompt,
+    userPrompt,
+  });
 };
 
 export const buildNineGridImagePrompt = (
@@ -748,7 +812,7 @@ export const buildNineGridImagePrompt = (
 ): string => {
   const stylePrompt = getStylePrompt(visualStyle);
   
-  return `Generate a SINGLE image composed as a cinematic storyboard with a 3x3 grid layout (9 equal panels).
+  const fallback = `Generate a SINGLE image composed as a cinematic storyboard with a 3x3 grid layout (9 equal panels).
 The image shows the SAME scene from 9 DIFFERENT camera angles and shot sizes.
 Each panel is separated by thin white borders.
 
@@ -765,14 +829,16 @@ CRITICAL REQUIREMENTS:
 - Maintain consistent lighting, color palette, and atmosphere across all panels
 - Each panel should be a complete, well-composed frame suitable for use as a keyframe
 - The overall image should read as a professional cinematographer's shot planning board`;
+  const template = getEffectivePrompt('buildNineGridImagePrompt', fallback);
+  return applyTemplate(template, { panelDescriptions, visualStyle, stylePrompt });
 };
 
 // ============================================
 // Script Service Prompts
 // ============================================
 
-export const buildScriptParsingPrompt = (rawText: string, language: string): string => 
-  `You are a professional screenwriter assistant. Parse the following script/story into structured data.
+export const buildScriptParsingPrompt = (rawText: string, language: string): string => {
+  const fallback = `You are a professional screenwriter assistant. Parse the following script/story into structured data.
 
 Script Text:
 ${rawText}
@@ -791,6 +857,9 @@ Return a valid JSON object with the structure:
   "scenes": [{"id": "string", "location": "string", "time": "string", "atmosphere": "string"}],
   "storyParagraphs": [{"id": number, "text": "string", "sceneRefId": "string"}]
 }`;
+  const template = getEffectivePrompt('buildScriptParsingPrompt', fallback);
+  return applyTemplate(template, { rawText, language });
+};
 
 // ————————————————————————————————————————————————
 // ✅ 这里是修改过的函数 (The Modified Function)
@@ -807,7 +876,7 @@ export const buildShotListGenerationPrompt = (
   totalShotsNeeded: number,
   shotsPerScene: number
 ): string => {
-  return `You are a professional cinematographer and director.
+  const fallback = `You are a professional cinematographer and director.
 Language: ${language}
 Visual Style: ${stylePrompt}
 Target Total Shots: ${totalShotsNeeded}
@@ -854,13 +923,27 @@ Return a valid JSON object:
     }
   ]
 }`;
+  const template = getEffectivePrompt('buildShotListGenerationPrompt', fallback);
+  return applyTemplate(template, {
+    language,
+    stylePrompt,
+    visualStyle,
+    artDirectionBlock,
+    scene,
+    index,
+    paragraphs,
+    scriptData,
+    scriptDataJson: JSON.stringify(scriptData, null, 2),
+    totalShotsNeeded,
+    shotsPerScene,
+  });
 };
 // ————————————————————————————————————————————————
 // ✅ 修改结束 
 // ————————————————————————————————————————————————
 
 export const buildScriptContinuationPrompt = (existingScript: string, language: string): string => {
-  return `你是一位资深剧本创作者。请在充分理解下方已有剧本内容的基础上，续写后续情节。
+  const fallback = `你是一位资深剧本创作者。请在充分理解下方已有剧本内容的基础上，续写后续情节。
 
 续写要求：
 1. 严格保持原剧本的风格、语气、人物性格和叙事节奏，确保无明显风格断层。
@@ -875,10 +958,12 @@ export const buildScriptContinuationPrompt = (existingScript: string, language: 
 ${existingScript}
 
 请直接续写剧本内容。（不要包含"续写："等前缀）：`;
+  const template = getEffectivePrompt('buildScriptContinuationPrompt', fallback);
+  return applyTemplate(template, { existingScript, language });
 };
 
 export const buildScriptRewritePrompt = (originalScript: string, language: string): string => {
-  return `你是一位顶级剧本编剧顾问，擅长提升剧本的结构、情感和戏剧张力。请对下方提供的剧本进行系统性、创造性改写，目标是使剧本在连贯性、流畅性和戏剧冲突等方面显著提升。
+  const fallback = `你是一位顶级剧本编剧顾问，擅长提升剧本的结构、情感和戏剧张力。请对下方提供的剧本进行系统性、创造性改写，目标是使剧本在连贯性、流畅性和戏剧冲突等方面显著提升。
 
 改写具体要求如下：
 
@@ -897,6 +982,8 @@ export const buildScriptRewritePrompt = (originalScript: string, language: strin
 ${originalScript}
 
 请根据以上要求，输出经过全面改写、结构优化、情感丰富的完整剧本文本。`;
+  const template = getEffectivePrompt('buildScriptRewritePrompt', fallback);
+  return applyTemplate(template, { originalScript, language });
 };
 
 // ============================================
@@ -913,7 +1000,7 @@ export const buildArtDirectionPrompt = (
   stylePrompt: string,
   language: string
 ): string => {
-  return `You are a world-class Art Director and Concept Artist for film and animation.
+  const fallback = `You are a world-class Art Director and Concept Artist for film and animation.
 Your task is to create a comprehensive ART DIRECTION BRIEF for a new project.
 This brief will serve as the "bible" for all subsequent visual generation (characters, scenes, props), ensuring a cohesive and unique visual identity.
 
@@ -953,6 +1040,8 @@ Output a valid JSON object with the following structure:
   "moodKeywords": ["Keyword1", "Keyword2", "Keyword3", "Keyword4", "Keyword5"],
   "consistencyAnchors": "A concise paragraph (50-80 words) summarizing the visual rules to be pasted into every future prompt to ensure consistency."
 }`;
+  const template = getEffectivePrompt('buildArtDirectionPrompt', fallback);
+  return applyTemplate(template, { title, genre, logline, characters, scenes, visualStyle, stylePrompt, language });
 };
 
 export const buildBatchCharacterPrompt = (
@@ -971,7 +1060,7 @@ Color Palette: Primary=${artDirection.colorPalette.primary}, Accent=${artDirecti
 Design Rules: ${artDirection.characterDesignRules.proportions}, ${artDirection.characterDesignRules.lineWeight}
 ` : '';
 
-  return `You are a Lead Character Designer.
+  const fallback = `You are a Lead Character Designer.
 Task: Create detailed visual prompts for the following characters.
 
 Visual Style: ${visualStyle} (${stylePrompt})
@@ -998,6 +1087,8 @@ Output a valid JSON object with a "characters" array, where each item matches th
     }
   ]
 }`;
+  const template = getEffectivePrompt('buildBatchCharacterPrompt', fallback);
+  return applyTemplate(template, { visualStyle, characters, artDirection, genre, stylePrompt, language, characterList, artDirectionBlock });
 };
 
 export const buildCharacterPrompt = (
@@ -1009,7 +1100,7 @@ export const buildCharacterPrompt = (
   stylePrompt: string,
   artDirection?: any
 ): string => {
-  return `Generate a detailed visual prompt for this character:
+  const fallback = `Generate a detailed visual prompt for this character:
 Name: ${char.name}
 Gender: ${char.gender}
 Age: ${char.age}
@@ -1027,6 +1118,8 @@ Requirements:
 - Pose and expression suggestions.
 - Ensure strict adherence to the Art Direction (if provided).
 - Output ONLY the prompt text in English.`;
+  const template = getEffectivePrompt('buildCharacterPrompt', fallback);
+  return applyTemplate(template, { visualStyle, artDirectionBlock, char, language, genre, stylePrompt, artDirection });
 };
 
 export const buildScenePrompt = (
@@ -1038,7 +1131,7 @@ export const buildScenePrompt = (
   stylePrompt: string,
   artDirection?: any
 ): string => {
-  return `Generate a detailed visual prompt for this scene:
+  const fallback = `Generate a detailed visual prompt for this scene:
 Location: ${scene.location}
 Time: ${scene.time}
 Atmosphere: ${scene.atmosphere}
@@ -1056,9 +1149,12 @@ Requirements:
 - Composition suggestions (wide shot, angle, etc.).
 - IMPORTANT: Keep the description concise and under 600 characters to ensure compatibility with image generation models.
 - Output ONLY the prompt text in English.`;
+  const template = getEffectivePrompt('buildScenePrompt', fallback);
+  return applyTemplate(template, { visualStyle, artDirectionBlock, scene, genre, language, stylePrompt, artDirection });
 };
 
-export const buildOutfitVariationPrompt = (prompt: string): string => `
+export const buildOutfitVariationPrompt = (prompt: string): string => {
+  const fallback = `
       ⚠️⚠️⚠️ CRITICAL REQUIREMENTS - CHARACTER OUTFIT VARIATION ⚠️⚠️⚠️
       
       Reference Images Information:
@@ -1086,6 +1182,9 @@ export const buildOutfitVariationPrompt = (prompt: string): string => `
       ⚠️ This is an OUTFIT VARIATION task - The face MUST match the reference, but the CLOTHES MUST be NEW as described!
       ⚠️ If the new outfit is not clearly visible and different from the reference, the task has FAILED!
     `;
+  const template = getEffectivePrompt('buildOutfitVariationPrompt', fallback);
+  return applyTemplate(template, { prompt });
+};
 
 export const buildConsistencyPrompt = (
   prompt: string,
@@ -1100,7 +1199,7 @@ export const buildConsistencyPrompt = (
          • The turnaround sheet takes priority over single character reference images for angle-specific details
          ` : '';
 
-  return `
+  const fallback = `
       ⚠️⚠️⚠️ CRITICAL REQUIREMENTS - CHARACTER CONSISTENCY ⚠️⚠️⚠️
       
       Reference Images Information:
@@ -1132,6 +1231,8 @@ export const buildConsistencyPrompt = (
       ⚠️ Character appearance consistency is THE MOST IMPORTANT requirement!
       ⚠️ Props/items must also maintain visual consistency with their reference images!
     `;
+  const template = getEffectivePrompt('buildConsistencyPrompt', fallback);
+  return applyTemplate(template, { prompt, hasTurnaround, turnaroundGuide });
 };
 
 export const buildTurnaroundPanelPrompt = (
@@ -1139,7 +1240,8 @@ export const buildTurnaroundPanelPrompt = (
   stylePrompt: string,
   artDirectionBlock: string,
   character: any
-): string => `You are an expert character designer and Art Director for ${visualStyle} productions.
+): string => {
+  const fallback = `You are an expert character designer and Art Director for ${visualStyle} productions.
 Your task is to create a CHARACTER TURNAROUND SHEET - a 3x3 grid (9 panels) showing the SAME character from 9 different angles and distances.
 
 This is for maintaining character consistency across multiple shots in video production.
@@ -1190,6 +1292,9 @@ Output ONLY valid JSON:
 }
 
 The "panels" array MUST have exactly 9 items (index 0-8).`;
+  const template = getEffectivePrompt('buildTurnaroundPanelPrompt', fallback);
+  return applyTemplate(template, { visualStyle, stylePrompt, artDirectionBlock, character });
+};
 
 export const buildTurnaroundImagePrompt = (
   visualStyle: string,
@@ -1197,7 +1302,8 @@ export const buildTurnaroundImagePrompt = (
   character: any,
   panelDescriptions: string,
   artDirectionSuffix: string
-): string => `Generate a SINGLE image composed as a CHARACTER TURNAROUND/REFERENCE SHEET with a 3x3 grid layout (9 equal panels).
+): string => {
+  const fallback = `Generate a SINGLE image composed as a CHARACTER TURNAROUND/REFERENCE SHEET with a 3x3 grid layout (9 equal panels).
 The image shows the SAME CHARACTER from 9 DIFFERENT viewing angles and distances.
 Each panel is separated by thin white borders.
 This is a professional character design reference sheet for animation/film production.
@@ -1225,3 +1331,6 @@ CRITICAL REQUIREMENTS:
 - Character should have a neutral/characteristic pose appropriate for a reference sheet${artDirectionSuffix}
 
 ⚠️ CHARACTER CONSISTENCY IS THE #1 PRIORITY - The character must look like the EXACT SAME PERSON in all 9 panels!`;
+  const template = getEffectivePrompt('buildTurnaroundImagePrompt', fallback);
+  return applyTemplate(template, { visualStyle, stylePrompt, character, panelDescriptions, artDirectionSuffix });
+};

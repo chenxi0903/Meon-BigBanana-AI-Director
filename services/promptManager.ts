@@ -136,6 +136,17 @@ export const initializePromptCache = async (userId: string) => {
   globalPromptCache = userPrompts;
 };
 
+export const setPromptOverrideCache = (promptId: string, content: string) => {
+  globalPromptCache = { ...globalPromptCache, [promptId]: content };
+};
+
+export const clearPromptOverrideCache = (promptId: string) => {
+  if (!globalPromptCache[promptId]) return;
+  const next = { ...globalPromptCache };
+  delete next[promptId];
+  globalPromptCache = next;
+};
+
 // Clear cache
 export const clearPromptCache = () => {
   globalPromptCache = {};
