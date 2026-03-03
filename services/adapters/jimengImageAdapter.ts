@@ -103,7 +103,7 @@ const callJimengTextToImage = async (
 ): Promise<string> => {
   const apiModel = model.apiModel || model.id;
   const ratio = mapAspectRatioToJimeng(options.aspectRatio || model.params.defaultAspectRatio);
-  const resolution = model.params.resolution || '2k';
+  const resolution = model.params.resolution;
 
   // Truncate prompt if too long (Jimeng has 800 char limit)
   let finalPrompt = options.prompt;
@@ -116,9 +116,11 @@ const callJimengTextToImage = async (
     model: apiModel,
     prompt: finalPrompt,
     ratio,
-    resolution,
     response_format: 'url',
   };
+  if (resolution) {
+    requestBody.resolution = resolution;
+  }
 
   // 添加可选参数
   if (model.params.negativePrompt) {
@@ -128,7 +130,7 @@ const callJimengTextToImage = async (
     requestBody.sample_strength = model.params.sampleStrength;
   }
 
-  console.log(`🖼️ 即梦文生图请求: model=${apiModel}, ratio=${ratio}, resolution=${resolution}`);
+  console.log(`🖼️ 即梦文生图请求: model=${apiModel}, ratio=${ratio}${resolution ? `, resolution=${resolution}` : ''}`);
 
   const response = await retryOperation(async () => {
     const res = await fetch(`${apiBase}/v1/images/generations`, {
@@ -183,7 +185,7 @@ const callJimengImageToImage = async (
 ): Promise<string> => {
   const apiModel = model.apiModel || model.id;
   const ratio = mapAspectRatioToJimeng(options.aspectRatio || model.params.defaultAspectRatio);
-  const resolution = model.params.resolution || '2k';
+  const resolution = model.params.resolution;
   const referenceImages = options.referenceImages || [];
 
   // Truncate prompt if too long (Jimeng has 800 char limit)
@@ -206,8 +208,10 @@ const callJimengImageToImage = async (
     formData.append('prompt', finalPrompt);
     formData.append('model', apiModel);
     formData.append('ratio', ratio);
-    formData.append('resolution', resolution);
     formData.append('response_format', 'url');
+    if (resolution) {
+      formData.append('resolution', resolution);
+    }
 
     if (model.params.negativePrompt) {
       formData.append('negative_prompt', model.params.negativePrompt);
@@ -254,9 +258,11 @@ const callJimengImageToImage = async (
       prompt: finalPrompt,
       images: referenceImages,
       ratio,
-      resolution,
       response_format: 'url',
     };
+    if (resolution) {
+      requestBody.resolution = resolution;
+    }
 
     if (model.params.negativePrompt) {
       requestBody.negative_prompt = model.params.negativePrompt;

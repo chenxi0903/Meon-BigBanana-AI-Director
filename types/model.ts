@@ -262,6 +262,24 @@ export const DEFAULT_IMAGE_PARAMS_JIMENG: ImageModelParams = {
 };
 
 /**
+ * 默认即梦图片模型参数（不带 resolution）
+ * 用于仅支持基础参数或不支持 resolution 的模型
+ */
+export const DEFAULT_IMAGE_PARAMS_JIMENG_NO_RESOLUTION: ImageModelParams = {
+  defaultAspectRatio: '1:1',
+  supportedAspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'],
+};
+
+/**
+ * 默认即梦图片模型参数（仅 1:1）
+ * 用于固定比例的模型
+ */
+export const DEFAULT_IMAGE_PARAMS_JIMENG_SQUARE_ONLY: ImageModelParams = {
+  defaultAspectRatio: '1:1',
+  supportedAspectRatios: ['1:1'],
+};
+
+/**
  * 默认即梦视频模型参数
  */
 export const DEFAULT_VIDEO_PARAMS_JIMENG: VideoModelParams = {
@@ -435,13 +453,49 @@ export const BUILTIN_IMAGE_MODELS: ImageModelDefinition[] = [
   },
   // ---- 即梦图片模型 ----
   {
+    id: 'nanobananapro',
+    apiModel: 'nanobananapro',
+    name: 'Nano Banana Pro',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '仅国际站支持，支持 ratio 与 resolution（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG },
+  },
+  {
+    id: 'nanobanana',
+    apiModel: 'nanobanana',
+    name: 'Nano Banana',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '仅国际站支持（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG_SQUARE_ONLY },
+  },
+  {
     id: 'jimeng-5.0',
     apiModel: 'jimeng-5.0',
     name: '即梦 5.0',
     type: 'image',
     providerId: 'jimeng',
     endpoint: '/v1/images/generations',
-    description: '即梦 5.0 文生图（需自行部署即梦反代服务）',
+    description: '国内站及亚洲国际站 (HK/JP/SG) 支持（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG },
+  },
+  {
+    id: 'jimeng-4.6',
+    apiModel: 'jimeng-4.6',
+    name: '即梦 4.6',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '国内站及亚洲国际站 (HK/JP/SG) 支持（需自行部署即梦反代服务）',
     isBuiltIn: true,
     isEnabled: false,
     params: { ...DEFAULT_IMAGE_PARAMS_JIMENG },
@@ -453,10 +507,58 @@ export const BUILTIN_IMAGE_MODELS: ImageModelDefinition[] = [
     type: 'image',
     providerId: 'jimeng',
     endpoint: '/v1/images/generations',
-    description: '即梦 4.5 文生图（需自行部署即梦反代服务）',
+    description: '国内、国际站均支持，支持 2k/4k 全部 ratio 及 intelligent_ratio（需自行部署即梦反代服务）',
     isBuiltIn: true,
     isEnabled: false,
     params: { ...DEFAULT_IMAGE_PARAMS_JIMENG },
+  },
+  {
+    id: 'jimeng-4.1',
+    apiModel: 'jimeng-4.1',
+    name: '即梦 4.1',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '国内、国际站均支持，支持 2k/4k 全部 ratio 及 intelligent_ratio（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG },
+  },
+  {
+    id: 'jimeng-4.0',
+    apiModel: 'jimeng-4.0',
+    name: '即梦 4.0',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '国内、国际站均支持（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG_NO_RESOLUTION },
+  },
+  {
+    id: 'jimeng-3.1',
+    apiModel: 'jimeng-3.1',
+    name: '即梦 3.1',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '仅国内站支持（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG_NO_RESOLUTION },
+  },
+  {
+    id: 'jimeng-3.0',
+    apiModel: 'jimeng-3.0',
+    name: '即梦 3.0',
+    type: 'image',
+    providerId: 'jimeng',
+    endpoint: '/v1/images/generations',
+    description: '国内、国际站均支持（需自行部署即梦反代服务）',
+    isBuiltIn: true,
+    isEnabled: false,
+    params: { ...DEFAULT_IMAGE_PARAMS_JIMENG_NO_RESOLUTION },
   },
 ];
 
