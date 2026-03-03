@@ -5,11 +5,14 @@ const generateId = (prefix: string): string => {
   return `${prefix}-${Date.now().toString(36)}-${rand}`;
 };
 
-const cloneCharacterVariation = (variation: Character['variations'][number]) => ({
-  ...variation,
-  id: generateId('var'),
-  status: variation.referenceImage ? 'completed' : 'pending'
-});
+const cloneCharacterVariation = (variation: Character['variations'][number]) => {
+  const status: Character['variations'][number]['status'] = variation.referenceImage ? 'completed' : 'pending';
+  return {
+    ...variation,
+    id: generateId('var'),
+    status
+  };
+};
 
 export const createLibraryItemFromCharacter = (
   character: Character,
@@ -49,19 +52,21 @@ export const createLibraryItemFromScene = (
 };
 
 export const cloneCharacterForProject = (character: Character): Character => {
+  const status: Character['status'] = character.referenceImage ? 'completed' : 'pending';
   return {
     ...character,
     id: generateId('char'),
     variations: (character.variations || []).map(cloneCharacterVariation),
-    status: character.referenceImage ? 'completed' : 'pending'
+    status
   };
 };
 
 export const cloneSceneForProject = (scene: Scene): Scene => {
+  const status: Scene['status'] = scene.referenceImage ? 'completed' : 'pending';
   return {
     ...scene,
     id: generateId('scene'),
-    status: scene.referenceImage ? 'completed' : 'pending'
+    status
   };
 };
 
@@ -83,10 +88,11 @@ export const createLibraryItemFromProp = (
 };
 
 export const clonePropForProject = (prop: Prop): Prop => {
+  const status: Prop['status'] = prop.referenceImage ? 'completed' : 'pending';
   return {
     ...prop,
     id: generateId('prop'),
-    status: prop.referenceImage ? 'completed' : 'pending'
+    status
   };
 };
 

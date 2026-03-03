@@ -482,6 +482,33 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   };
 
   /**
+   * 重新生成角色提示词
+   */
+  const handleRegenerateCharacterPrompt = async (charId: string) => {
+    if (!project.scriptData) return;
+    const char = project.scriptData.characters.find(c => compareIds(c.id, charId));
+    if (!char) return;
+
+    try {
+      const prompts = await generateVisualPrompts('character', char, genre, DEFAULTS.modelVersion, visualStyle, language);
+      const newData = { ...project.scriptData };
+      const target = newData.characters.find(c => compareIds(c.id, charId));
+      if (target) {
+        target.visualPrompt = prompts.visualPrompt;
+        target.negativePrompt = prompts.negativePrompt;
+      }
+      updateProject({ scriptData: newData });
+      showAlert(`角色「${char.name}」提示词已重新生成`, { type: 'success' });
+    } catch (e: any) {
+      console.error(e);
+      if (onApiKeyError && onApiKeyError(e)) {
+        return;
+      }
+      showAlert('重新生成角色提示词失败，请稍后重试', { type: 'error' });
+    }
+  };
+
+  /**
    * 更新角色基本信息
    */
   const handleUpdateCharacterInfo = (charId: string, updates: { name?: string; gender?: string; age?: string; personality?: string }) => {
@@ -1114,7 +1141,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   const allPropsReady = (project.scriptData.props || []).length > 0 && (project.scriptData.props || []).every(p => p.referenceImage);
   const selectedChar = project.scriptData.characters.find(c => compareIds(c.id, selectedCharId));
   const projectNameOptions = Array.from(
-    new Set(
+    new Set<string>(
       libraryItems.map((item) => (item.projectName && item.projectName.trim()) || '未知项目')
     )
   ).sort((a, b) => a.localeCompare(b, 'zh-CN'));
@@ -1442,7 +1469,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 onUpdateInfo={(updates) => handleUpdateCharacterInfo(char.id, updates)}
                 onAddToLibrary={() => handleAddCharacterToLibrary(char)}
                 onReplaceFromLibrary={() => openLibrary('character', char.id)}
-                onRegeneratePrompt={() => console.log('Regenerate prompt for character:', char.id)}
+                onRegeneratePrompt={() => handleRegenerateCharacterPrompt(char.id)}
               />
             ))}
           </div>

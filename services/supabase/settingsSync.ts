@@ -1,6 +1,7 @@
 
 import { supabase, isSupabaseConfigured } from './client';
-import { ModelRegistryState, JimengGlobalConfig } from '../modelRegistry';
+import { JimengGlobalConfig } from '../modelRegistry';
+import { ModelRegistryState } from '../../types/model';
 
 export interface UserSettings {
   registry: ModelRegistryState;

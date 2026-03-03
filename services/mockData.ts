@@ -11,6 +11,7 @@ export const MOCK_SCRIPT: ScriptData = {
   scenes: [
     { id: "s1", location: "Sector 7 Alley", time: "Night", atmosphere: "Rainy, Neon-lit", visualPrompt: "Dark alleyway in a futuristic city, heavy rain, neon signs reflecting in puddles, steam rising from vents, volumetric lighting" }
   ],
+  props: [],
   storyParagraphs: [
     { id: 1, text: "Kael stands in the rain, looking up at the holographic billboard.", sceneRefId: "s1" }
   ]
