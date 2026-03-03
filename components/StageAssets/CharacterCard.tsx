@@ -17,6 +17,7 @@ interface CharacterCardProps {
   onUpdateInfo: (updates: { name?: string; gender?: string; age?: string; personality?: string }) => void;
   onAddToLibrary: () => void;
   onReplaceFromLibrary: () => void;
+  onRegeneratePrompt?: () => void;
 }
 
 const CharacterCard: React.FC<CharacterCardProps> = ({
@@ -32,6 +33,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
   onUpdateInfo,
   onAddToLibrary,
   onReplaceFromLibrary,
+  onRegeneratePrompt,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingGender, setIsEditingGender] = useState(false);
@@ -253,6 +255,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
             onSave={onPromptSave}
             label="角色提示词"
             placeholder="输入角色的视觉描述..."
+            onRegenerate={onRegeneratePrompt}
           />
         </div>
 

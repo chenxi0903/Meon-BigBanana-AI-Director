@@ -1442,6 +1442,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 onUpdateInfo={(updates) => handleUpdateCharacterInfo(char.id, updates)}
                 onAddToLibrary={() => handleAddCharacterToLibrary(char)}
                 onReplaceFromLibrary={() => openLibrary('character', char.id)}
+                onRegeneratePrompt={() => console.log('Regenerate prompt for character:', char.id)}
               />
             ))}
           </div>

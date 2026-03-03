@@ -1100,6 +1100,7 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
                 isActive={activeShotId === shot.id}
                 onClick={() => setActiveShotId(shot.id)}
                 onDelete={handleDeleteShot}
+                aspectRatio={keyframeAspectRatio}
               />
             ))}
           </div>
@@ -1188,6 +1189,7 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
             nineGrid={activeShot.nineGrid}
             onSelectNineGridPanel={handleSelectNineGridPanel}
             onShowNineGrid={() => setShowNineGrid(true)}
+            aspectRatio={keyframeAspectRatio}
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image as ImageIcon, Video, Trash2 } from 'lucide-react';
-import { Shot } from '../../types';
+import { Shot, AspectRatio } from '../../types';
 
 interface ShotCardProps {
   shot: Shot;
@@ -8,9 +8,10 @@ interface ShotCardProps {
   isActive: boolean;
   onClick: () => void;
   onDelete?: (shotId: string) => void;
+  aspectRatio?: AspectRatio;
 }
 
-const ShotCard: React.FC<ShotCardProps> = ({ shot, index, isActive, onClick, onDelete }) => {
+const ShotCard: React.FC<ShotCardProps> = ({ shot, index, isActive, onClick, onDelete, aspectRatio = '16:9' }) => {
   const sKf = shot.keyframes?.find(k => k.type === 'start');
   const hasImage = !!sKf?.imageUrl;
   const hasVideo = !!shot.interval?.videoUrl;
@@ -64,7 +65,10 @@ const ShotCard: React.FC<ShotCardProps> = ({ shot, index, isActive, onClick, onD
       </div>
 
       {/* Thumbnail */}
-      <div className="aspect-video bg-[var(--bg-elevated)] relative overflow-hidden">
+      <div 
+        className="bg-[var(--bg-elevated)] relative overflow-hidden"
+        style={{ aspectRatio: aspectRatio.replace(':', '/') }}
+      >
         {hasImage ? (
           <img 
             src={sKf!.imageUrl} 

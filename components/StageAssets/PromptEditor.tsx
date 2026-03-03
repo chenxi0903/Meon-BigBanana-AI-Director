@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, Save, AlertCircle, Camera } from 'lucide-react';
+import { Edit3, Save, AlertCircle, Camera, Sparkles } from 'lucide-react';
 
 interface PromptEditorProps {
   prompt: string;
@@ -7,6 +7,7 @@ interface PromptEditorProps {
   label?: string;
   placeholder?: string;
   maxHeight?: string;
+  onRegenerate?: () => void;
 }
 
 const PromptEditor: React.FC<PromptEditorProps> = ({
@@ -15,6 +16,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   label = '提示词',
   placeholder = '输入视觉描述...',
   maxHeight = 'max-h-[260px]',
+  onRegenerate,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedPrompt, setEditedPrompt] = useState(prompt);
@@ -42,13 +44,24 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
           {label}
         </label>
         {!isEditing && (
-          <button
-            onClick={handleStartEdit}
-            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors p-1 hover:bg-[var(--bg-hover)] rounded"
-            title="编辑提示词"
-          >
-            <Edit3 className="w-3 h-3" />
-          </button>
+          <div className="flex items-center gap-1">
+            {onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors p-1 hover:bg-[var(--bg-hover)] rounded"
+                title="重新生成角色提示词"
+              >
+                <Sparkles className="w-3 h-3" />
+              </button>
+            )}
+            <button
+              onClick={handleStartEdit}
+              className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors p-1 hover:bg-[var(--bg-hover)] rounded"
+              title="编辑提示词"
+            >
+              <Edit3 className="w-3 h-3" />
+            </button>
+          </div>
         )}
       </div>
 

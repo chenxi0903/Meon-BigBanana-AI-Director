@@ -1,5 +1,5 @@
-import React from 'react';
-import { Aperture, Edit2, Check, X, UserPlus, Trash2, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Aperture, Edit2, Check, X, UserPlus, Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import { Shot, Character, ScriptData } from '../../types';
 import InlineEditor from './InlineEditor';
 import { STYLES } from './constants';
@@ -51,6 +51,8 @@ const ShotRow: React.FC<Props> = ({
   onAddSubShot,
   onDeleteShot
 }) => {
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
+
   // 从shot.id中提取显示编号
   // 例如：shot-1 → "SHOT 001", shot-1-1 → "SHOT 001-1"
   const getShotDisplayNumber = () => {
@@ -254,12 +256,25 @@ const ShotRow: React.FC<Props> = ({
         {/* Mobile Prompt Editor */}
         <div className="xl:hidden pt-4 border-t border-[var(--border-subtle)]">
           <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2 flex items-center gap-2 justify-between">
-            <span className="flex items-center gap-2">
-              <Aperture className="w-3 h-3" /> 画面提示词
-            </span>
+            <button
+              onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+              className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors focus:outline-none"
+            >
+              {isPromptExpanded || editingShotId === shot.id ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+              <span className="flex items-center gap-2">
+                <Aperture className="w-3 h-3" /> 画面提示词
+              </span>
+            </button>
             {editingShotId !== shot.id && (
               <button
-                onClick={() => onEditPrompt(shot.id, shot.keyframes[0]?.visualPrompt || '')}
+                onClick={() => {
+                  onEditPrompt(shot.id, shot.keyframes[0]?.visualPrompt || '');
+                  setIsPromptExpanded(true);
+                }}
                 className="p-1.5 bg-[var(--bg-hover)] hover:bg-[var(--border-secondary)] rounded transition-colors"
                 title="编辑提示词"
               >
@@ -267,18 +282,23 @@ const ShotRow: React.FC<Props> = ({
               </button>
             )}
           </div>
-          <InlineEditor
-            isEditing={editingShotId === shot.id}
-            value={editingShotId === shot.id ? editingShotPrompt : shot.keyframes[0]?.visualPrompt || ''}
-            onEdit={() => onEditPrompt(shot.id, shot.keyframes[0]?.visualPrompt || '')}
-            onChange={(val) => onEditPrompt(shot.id, val)}
-            onSave={onSavePrompt}
-            onCancel={onCancelPrompt}
-            placeholder="输入画面提示词..."
-            rows={6}
-            mono={true}
-            showEditButton={false}
-          />
+          {(isPromptExpanded || editingShotId === shot.id) && (
+            <InlineEditor
+              isEditing={editingShotId === shot.id}
+              value={editingShotId === shot.id ? editingShotPrompt : shot.keyframes[0]?.visualPrompt || ''}
+              onEdit={() => {
+                onEditPrompt(shot.id, shot.keyframes[0]?.visualPrompt || '');
+                setIsPromptExpanded(true);
+              }}
+              onChange={(val) => onEditPrompt(shot.id, val)}
+              onSave={onSavePrompt}
+              onCancel={onCancelPrompt}
+              placeholder="输入画面提示词..."
+              rows={6}
+              mono={true}
+              showEditButton={false}
+            />
+          )}
         </div>
       </div>
 

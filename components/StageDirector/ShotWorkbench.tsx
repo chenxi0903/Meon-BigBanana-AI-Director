@@ -44,6 +44,7 @@ interface ShotWorkbenchProps {
   nineGrid?: NineGridData;
   onSelectNineGridPanel: (panel: NineGridPanel) => void;
   onShowNineGrid: () => void;
+  aspectRatio?: AspectRatio;
 }
 
 const ShotWorkbench: React.FC<ShotWorkbenchProps> = ({
@@ -83,7 +84,8 @@ const ShotWorkbench: React.FC<ShotWorkbenchProps> = ({
   onGenerateNineGrid,
   nineGrid,
   onSelectNineGridPanel,
-  onShowNineGrid
+  onShowNineGrid,
+  aspectRatio = '16:9'
 }) => {
   const scene = scriptData?.scenes.find(s => String(s.id) === String(shot.sceneId));
   const activeCharacters = scriptData?.characters.filter(c => shot.characters.includes(c.id)) || [];
@@ -270,6 +272,7 @@ const ShotWorkbench: React.FC<ShotWorkbenchProps> = ({
           onCopyPrevious={onCopyPreviousEndFrame}
           onCopyNext={onCopyNextStartFrame}
           onImageClick={onImageClick}
+          aspectRatio={aspectRatio}
         />
 
         {/* Narrative Section - 叙事动作作为视频提示词，放在视觉制作之后、视频生成之前 */}
