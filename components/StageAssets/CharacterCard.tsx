@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Check, Shirt, Trash2, Edit2, AlertCircle, FolderPlus, Grid3x3 } from 'lucide-react';
+import { User, Check, Shirt, Trash2, Edit2, AlertCircle, FolderPlus, Grid3x3, LayoutGrid, Loader2 } from 'lucide-react';
 import { Character } from '../../types';
 import PromptEditor from './PromptEditor';
 import ImageUploadButton from './ImageUploadButton';
@@ -14,6 +14,7 @@ interface CharacterCardProps {
   onPromptSave: (newPrompt: string) => void;
   onOpenWardrobe: () => void;
   onOpenTurnaround: () => void;
+  onOpenThreeView: () => void;
   onImageClick: (imageUrl: string) => void;
   onDelete: () => void;
   onUpdateInfo: (updates: { name?: string; gender?: string; age?: string; personality?: string }) => void;
@@ -32,6 +33,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
   onPromptSave,
   onOpenWardrobe,
   onOpenTurnaround,
+  onOpenThreeView,
   onImageClick,
   onDelete,
   onUpdateInfo,
@@ -201,14 +203,35 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
 
           {/* Actions Row */}
           <div className="flex flex-col gap-2 mt-2">
-            {/* Manage Wardrobe Button */}
-            <button 
-              onClick={onOpenWardrobe}
-              className="w-full py-1.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border border-[var(--border-primary)] transition-colors"
-            >
-              <Shirt className="w-3 h-3" />
-              服装变体
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={onOpenWardrobe}
+                className="flex-1 py-1.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border border-[var(--border-primary)] transition-colors"
+              >
+                <Shirt className="w-3 h-3" />
+                服装变体
+              </button>
+
+              <button 
+                onClick={onOpenThreeView}
+                disabled={character.threeView?.status === 'generating'}
+                className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                  character.threeView?.status === 'completed'
+                    ? 'bg-[var(--accent-bg)] hover:bg-[var(--accent-hover-bg)] text-[var(--accent-text)] border-[var(--accent-border)]'
+                    : 'bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] border-[var(--border-primary)]'
+                }`}
+              >
+                {character.threeView?.status === 'generating' ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <LayoutGrid className="w-3 h-3" />
+                )}
+                三视图生成
+                {character.threeView?.status === 'completed' && (
+                  <Check className="w-2.5 h-2.5" />
+                )}
+              </button>
+            </div>
 
             {/* Turnaround Sheet Button */}
             <button 

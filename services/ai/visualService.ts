@@ -16,7 +16,7 @@ import {
 import { isJimengImageModel, callJimengImageApi } from '../adapters/jimengImageAdapter';
 import { callImageApi } from '../adapters/imageAdapter';
 import { ImageModelDefinition } from '../../types/model';
-import { getActiveChatModel, getChatModels, isModelAvailable } from '../modelRegistry';
+import { getActiveChatModel, getChatModels, getActiveImageModel, getModelById, isModelAvailable } from '../modelRegistry';
 import {
   getStylePrompt,
   getNegativePrompt,
@@ -29,6 +29,7 @@ import {
   buildScenePrompt,
   buildOutfitVariationPrompt,
   buildConsistencyPrompt,
+  buildThreeViewPrompt,
   buildTurnaroundPanelPrompt,
   buildTurnaroundImagePrompt
 } from './prompts';
@@ -368,6 +369,39 @@ export const generateImage = async (
 
     throw error;
   }
+};
+
+export const generateCharacterThreeViewImage = async (
+  character: Character,
+  visualStyle: string,
+  language: string = '中文',
+  modelId?: string,
+  signal?: AbortSignal
+): Promise<{ imageUrl: string; prompt: string; modelId: string }> => {
+  const prompt = buildThreeViewPrompt({ character, visualStyle, language });
+
+  const preferredModelId = isModelAvailable('jimeng-4.6') ? 'jimeng-4.6' : undefined;
+  const selectedModelId = preferredModelId || (modelId && isModelAvailable(modelId) ? modelId : undefined);
+  const model =
+    (selectedModelId ? (getModelById(selectedModelId) as ImageModelDefinition | undefined) : undefined) ||
+    getActiveImageModel();
+
+  if (!model) {
+    throw new Error('没有可用的图片模型');
+  }
+
+  const referenceImages = character.referenceImage ? [character.referenceImage] : undefined;
+  const imageUrl = await callImageApi(
+    {
+      prompt,
+      referenceImages,
+      aspectRatio: '16:9',
+      signal,
+    },
+    model
+  );
+
+  return { imageUrl, prompt, modelId: model.id };
 };
 
 // ============================================

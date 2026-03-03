@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, Sparkles, RefreshCw, Loader2, MapPin, Archive, X, Search, Trash2, Package } from 'lucide-react';
 import { ProjectState, CharacterVariation, Character, Scene, Prop, AspectRatio, AssetLibraryItem, CharacterTurnaroundPanel } from '../../types';
-import { generateImage, generateVisualPrompts, generateCharacterTurnaroundPanels, generateCharacterTurnaroundImage } from '../../services/aiService';
+import { generateImage, generateVisualPrompts, generateCharacterTurnaroundPanels, generateCharacterTurnaroundImage, generateCharacterThreeViewImage } from '../../services/aiService';
 import { 
   getRegionalPrefix, 
   handleImageUpload, 
@@ -18,11 +18,12 @@ import SceneCard from './SceneCard';
 import PropCard from './PropCard';
 import WardrobeModal from './WardrobeModal';
 import TurnaroundModal from './TurnaroundModal';
+import ThreeViewModal from './ThreeViewModal';
 import { useAlert } from '../GlobalAlert';
 import { getAllAssetLibraryItems, saveAssetToLibrary, deleteAssetFromLibrary } from '../../services/storageService';
 import { applyLibraryItemToProject, createLibraryItemFromCharacter, createLibraryItemFromScene, createLibraryItemFromProp, cloneCharacterForProject } from '../../services/assetLibraryService';
 import { AspectRatioSelector } from '../AspectRatioSelector';
-import { getUserAspectRatio, setUserAspectRatio, getActiveImageModel } from '../../services/modelRegistry';
+import { getUserAspectRatio, setUserAspectRatio, getActiveImageModel, getImageModels, isModelAvailable } from '../../services/modelRegistry';
 import { getActiveChatModelName } from '../../services/ai/apiCore';
 
 interface Props {
@@ -45,6 +46,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   const [libraryProjectFilter, setLibraryProjectFilter] = useState('all');
   const [replaceTargetCharId, setReplaceTargetCharId] = useState<string | null>(null);
   const [turnaroundCharId, setTurnaroundCharId] = useState<string | null>(null);
+  const [threeViewCharId, setThreeViewCharId] = useState<string | null>(null);
+  const [threeViewModelId, setThreeViewModelId] = useState<string>('');
   const [regeneratingPromptMap, setRegeneratingPromptMap] = useState<Record<string, boolean>>({});
   const generationControllersRef = useRef<Record<string, AbortController>>({});
   
@@ -199,11 +202,61 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
     }
   };
 
+  const handleOpenThreeView = (charId: string) => {
+    const availableModels = getImageModels().filter(m => isModelAvailable(m.id));
+    const activeId = getActiveImageModel()?.id;
+    const defaultId = (activeId && availableModels.some(m => m.id === activeId))
+      ? activeId
+      : (availableModels[0]?.id || '');
+    setThreeViewModelId(defaultId);
+    setThreeViewCharId(charId);
+    if (isModelAvailable('jimeng-4.6')) {
+      const c = project.scriptData?.characters.find(c => compareIds(c.id, charId));
+      const status = c?.threeView?.status;
+      if (status !== 'generating' && status !== 'completed') {
+        void handleGenerateThreeView(charId);
+      }
+    }
+  };
+
   const cancelTask = (key: string) => {
     const controller = generationControllersRef.current[key];
     if (!controller) return;
     controller.abort();
     delete generationControllersRef.current[key];
+  };
+
+  const setThreeViewState = (charId: string, updates: Partial<Character['threeView']>) => {
+    updateProject((prev) => {
+      if (!prev.scriptData) return prev;
+      const newData = { ...prev.scriptData };
+      const c = newData.characters.find(c => compareIds(c.id, charId));
+      if (!c) return prev;
+      const current = c.threeView || { status: 'pending' as const };
+      c.threeView = { ...current, ...updates } as any;
+      return { ...prev, scriptData: newData };
+    });
+  };
+
+  const handleGenerateThreeView = async (charId: string, modelId?: string) => {
+    const char = project.scriptData?.characters.find(c => compareIds(c.id, charId));
+    if (!char) return;
+
+    await startCancellableTask(`threeview:${charId}`, async (signal) => {
+      setThreeViewState(charId, { status: 'generating', imageUrl: undefined, prompt: undefined });
+      try {
+        const result = await generateCharacterThreeViewImage(char, visualStyle, language, modelId, signal);
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        setThreeViewState(charId, { status: 'completed', imageUrl: result.imageUrl, prompt: result.prompt });
+        setPreviewImage(result.imageUrl);
+        showAlert('三视图生成完成', { type: 'success' });
+      } catch (e: any) {
+        if (isAbortError(e)) return;
+        console.error('三视图生成失败', e);
+        setThreeViewState(charId, { status: 'failed' });
+        showAlert(e?.message || '三视图生成失败', { type: 'error' });
+      }
+    });
   };
 
   const refreshLibrary = async () => {
@@ -1319,6 +1372,28 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
         ) : null;
       })()}
 
+      {/* Three View Modal */}
+      {threeViewCharId && (() => {
+        const threeViewChar = project.scriptData?.characters.find(c => compareIds(c.id, threeViewCharId));
+        if (!threeViewChar) return null;
+        const showModelSelector = !isModelAvailable('jimeng-4.6');
+        const modelOptions = getImageModels()
+          .filter(m => isModelAvailable(m.id))
+          .map(m => ({ id: m.id, name: m.name }));
+        return (
+          <ThreeViewModal
+            character={threeViewChar}
+            modelOptions={modelOptions}
+            selectedModelId={threeViewModelId}
+            showModelSelector={showModelSelector}
+            onSelectModelId={setThreeViewModelId}
+            onGenerate={() => handleGenerateThreeView(threeViewChar.id, showModelSelector ? threeViewModelId : undefined)}
+            onClose={() => setThreeViewCharId(null)}
+            onImageClick={setPreviewImage}
+          />
+        );
+      })()}
+
       {/* Asset Library Modal */}
       {showLibraryModal && (
         <div className={STYLES.modalOverlay} onClick={() => {
@@ -1573,6 +1648,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 onPromptSave={(newPrompt) => handleSaveCharacterPrompt(char.id, newPrompt)}
                 onOpenWardrobe={() => setSelectedCharId(char.id)}
                 onOpenTurnaround={() => setTurnaroundCharId(char.id)}
+                onOpenThreeView={() => handleOpenThreeView(char.id)}
                 onImageClick={setPreviewImage}
                 onDelete={() => handleDeleteCharacter(char.id)}
                 onUpdateInfo={(updates) => handleUpdateCharacterInfo(char.id, updates)}

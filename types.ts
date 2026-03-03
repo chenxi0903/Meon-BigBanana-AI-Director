@@ -32,6 +32,12 @@ export interface CharacterTurnaroundData {
   // generating_image: 用户已确认，正在生成九宫格图片
 }
 
+export interface CharacterThreeViewData {
+  imageUrl?: string;
+  prompt?: string;
+  status: 'pending' | 'generating' | 'completed' | 'failed';
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -43,6 +49,7 @@ export interface Character {
   coreFeatures?: string; // 核心固定特征，用于保持角色一致性
   referenceImage?: string; // 角色基础参考图，存储为base64格式（data:image/png;base64,...）
   turnaround?: CharacterTurnaroundData; // 角色九宫格造型设计，多视角参考图
+  threeView?: CharacterThreeViewData; // 角色三视图设计图
   variations: CharacterVariation[]; // Added: List of alternative looks
   status?: 'pending' | 'generating' | 'completed' | 'failed'; // 生成状态，用于loading状态持久化
 }

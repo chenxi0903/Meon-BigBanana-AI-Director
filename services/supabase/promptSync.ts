@@ -103,7 +103,8 @@ const collectPrompts = (): PromptTemplate[] => {
     'buildCharacterPrompt',
     'buildScenePrompt',
     'buildOutfitVariationPrompt',
-    'buildConsistencyPrompt'
+    'buildConsistencyPrompt',
+    'buildThreeViewPrompt'
   ];
 
   functionNames.forEach(funcName => {

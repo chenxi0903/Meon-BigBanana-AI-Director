@@ -59,6 +59,7 @@ export {
   generateAllCharacterPrompts,
   generateVisualPrompts,
   generateImage,
+  generateCharacterThreeViewImage,
   CHARACTER_TURNAROUND_LAYOUT,
   generateCharacterTurnaroundPanels,
   generateCharacterTurnaroundImage,
