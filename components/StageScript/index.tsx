@@ -519,6 +519,19 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setEditingShotDialogueText('');
   };
 
+  const handleReorderShots = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const fromIndex = project.shots.findIndex(s => s.id === sourceId);
+    const toIndex = project.shots.findIndex(s => s.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const nextShots = [...project.shots];
+    const [moved] = nextShots.splice(fromIndex, 1);
+    const insertAt = fromIndex < toIndex ? toIndex - 1 : toIndex;
+    nextShots.splice(insertAt, 0, moved);
+    updateProject({ shots: nextShots });
+  };
+
   const getShotDisplayName = (shot: Shot, fallbackIndex: number) => {
     const idParts = shot.id.split('-').slice(1);
     if (idParts.length === 1) {
@@ -556,17 +569,6 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
         showAlert(`${displayName} 已删除`, { type: 'success' });
       }
     });
-  };
-
-  const handleMoveShot = (shotId: string, direction: 'up' | 'down') => {
-    const shotIndex = project.shots.findIndex(s => s.id === shotId);
-    if (shotIndex < 0) return;
-    const targetIndex = direction === 'up' ? shotIndex - 1 : shotIndex + 1;
-    if (targetIndex < 0 || targetIndex >= project.shots.length) return;
-    const nextShots = [...project.shots];
-    const [moved] = nextShots.splice(shotIndex, 1);
-    nextShots.splice(targetIndex, 0, moved);
-    updateProject({ shots: nextShots });
   };
 
   return (
@@ -649,7 +651,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
           onAddShot={handleAddShot}
           onAddSubShot={handleAddSubShot}
           onDeleteShot={handleDeleteShot}
-          onMoveShot={handleMoveShot}
+          onReorderShots={handleReorderShots}
           onBackToStory={() => setActiveTab('story')}
         />
       )}

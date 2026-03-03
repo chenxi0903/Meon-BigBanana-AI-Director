@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Clock, List, ArrowLeft, TextQuote, Plus } from 'lucide-react';
 import { ProjectState, Shot } from '../../types';
 import { deduplicateScenes } from './utils';
@@ -32,7 +32,7 @@ interface Props {
   onAddShot: (sceneId: string) => void;
   onAddSubShot: (shotId: string) => void;
   onDeleteShot: (shotId: string) => void;
-  onMoveShot: (shotId: string, direction: 'up' | 'down') => void;
+  onReorderShots: (sourceId: string, targetId: string) => void;
   onBackToStory: () => void;
 }
 
@@ -62,10 +62,37 @@ const SceneBreakdown: React.FC<Props> = ({
   onAddShot,
   onAddSubShot,
   onDeleteShot,
-  onMoveShot,
+  onReorderShots,
   onBackToStory
 }) => {
   const uniqueScenes = deduplicateScenes(project.scriptData?.scenes);
+  const [draggingShotId, setDraggingShotId] = useState<string | null>(null);
+  const [dragOverShotId, setDragOverShotId] = useState<string | null>(null);
+
+  const handleDragStart = (shotId: string, event: React.DragEvent<HTMLButtonElement>) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', shotId);
+    setDraggingShotId(shotId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingShotId(null);
+    setDragOverShotId(null);
+  };
+
+  const handleDragOver = (shotId: string, event: React.DragEvent<HTMLDivElement>) => {
+    if (!draggingShotId || draggingShotId === shotId) return;
+    event.preventDefault();
+    if (dragOverShotId !== shotId) {
+      setDragOverShotId(shotId);
+    }
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!draggingShotId || draggingShotId === targetId) return;
+    onReorderShots(draggingShotId, targetId);
+    setDragOverShotId(null);
+  };
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-base)] animate-in fade-in duration-500">
@@ -187,7 +214,11 @@ const SceneBreakdown: React.FC<Props> = ({
                           onCancelAction={onCancelShotAction}
                           onAddSubShot={onAddSubShot}
                           onDeleteShot={onDeleteShot}
-                          onMoveShot={onMoveShot}
+                          isDragOver={dragOverShotId === shot.id}
+                          onDragStart={handleDragStart}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
                         />
                       ))}
                     </div>

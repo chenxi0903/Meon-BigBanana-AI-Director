@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Aperture, Edit2, Check, X, UserPlus, Trash2, Plus, ChevronRight, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { Aperture, Edit2, Check, X, UserPlus, Trash2, Plus, ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { Shot, Character, ScriptData } from '../../types';
 import InlineEditor from './InlineEditor';
 import { STYLES } from './constants';
@@ -14,6 +14,7 @@ interface Props {
   editingShotActionId: string | null;
   editingShotActionText: string;
   editingShotDialogueText: string;
+  isDragOver?: boolean;
   onEditPrompt: (shotId: string, prompt: string) => void;
   onSavePrompt: () => void;
   onCancelPrompt: () => void;
@@ -26,7 +27,10 @@ interface Props {
   onCancelAction: () => void;
   onAddSubShot: (shotId: string) => void;
   onDeleteShot: (shotId: string) => void;
-  onMoveShot: (shotId: string, direction: 'up' | 'down') => void;
+  onDragStart: (shotId: string, event: React.DragEvent<HTMLButtonElement>) => void;
+  onDragEnd: () => void;
+  onDragOver: (shotId: string, event: React.DragEvent<HTMLDivElement>) => void;
+  onDrop: (shotId: string) => void;
 }
 
 const ShotRow: React.FC<Props> = ({
@@ -39,6 +43,7 @@ const ShotRow: React.FC<Props> = ({
   editingShotActionId,
   editingShotActionText,
   editingShotDialogueText,
+  isDragOver = false,
   onEditPrompt,
   onSavePrompt,
   onCancelPrompt,
@@ -51,7 +56,10 @@ const ShotRow: React.FC<Props> = ({
   onCancelAction,
   onAddSubShot,
   onDeleteShot,
-  onMoveShot
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop
 }) => {
   // 从shot.id中提取显示编号
   // 例如：shot-1 → "SHOT 001", shot-1-1 → "SHOT 001-1"
@@ -73,18 +81,27 @@ const ShotRow: React.FC<Props> = ({
   const isPromptExpanded = !isPromptCollapsed || editingShotId === shot.id;
 
   return (
-    <div className="group bg-[var(--bg-base)] hover:bg-[var(--bg-primary)] transition-colors p-8 flex gap-8">
+    <div
+      className={`group bg-[var(--bg-base)] hover:bg-[var(--bg-primary)] transition-colors p-8 flex gap-8 ${isDragOver ? 'ring-1 ring-[var(--accent)] bg-[var(--bg-primary)]' : ''}`}
+      onDragOver={(event) => onDragOver(shot.id, event)}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop(shot.id);
+      }}
+    >
       {/* Shot ID & Tech Data */}
       <div className="w-32 flex-shrink-0 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2 text-xs font-mono text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors">
           <span>{getShotDisplayNumber()}</span>
           <div className="flex items-center gap-1">
             <button
-              onClick={(e) => onMoveShot(shot.id, e.shiftKey ? 'down' : 'up')}
-              className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all opacity-0 group-hover:opacity-100"
-              title="上移镜头（Shift+点击下移）"
+              draggable
+              onDragStart={(event) => onDragStart(shot.id, event)}
+              onDragEnd={onDragEnd}
+              className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+              title="拖动排序"
             >
-              <ArrowUpDown className="w-3 h-3" />
+              <GripVertical className="w-3 h-3" />
             </button>
             <button
               onClick={() => onAddSubShot(shot.id)}
