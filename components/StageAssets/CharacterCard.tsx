@@ -9,6 +9,7 @@ interface CharacterCardProps {
   isGenerating: boolean;
   isRegeneratingPrompt?: boolean;
   onGenerate: () => void;
+  onStopGenerate?: () => void;
   onUpload: (file: File) => void;
   onPromptSave: (newPrompt: string) => void;
   onOpenWardrobe: () => void;
@@ -26,6 +27,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
   isGenerating,
   isRegeneratingPrompt = false,
   onGenerate,
+  onStopGenerate,
   onUpload,
   onPromptSave,
   onOpenWardrobe,
@@ -92,6 +94,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
                       size="small"
                       onUpload={onUpload}
                       onGenerate={onGenerate}
+                      onStop={onStopGenerate}
                       isGenerating={isGenerating}
                       uploadLabel="上传"
                       generateLabel="重试"
@@ -105,6 +108,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
                       size="small"
                       onUpload={onUpload}
                       onGenerate={onGenerate}
+                      onStop={onStopGenerate}
                       isGenerating={isGenerating}
                       uploadLabel="上传"
                       generateLabel="生成"
@@ -230,6 +234,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
                   hasImage={true}
                   onUpload={onUpload}
                   onGenerate={onGenerate}
+                  onStop={onStopGenerate}
                   isGenerating={isGenerating}
                   uploadLabel="上传"
                 />

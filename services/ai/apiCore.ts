@@ -223,13 +223,17 @@ export const chatCompletion = async (
   temperature: number = 0.7,
   maxTokens: number = 8192,
   responseFormat?: 'json_object',
-  timeout: number = 600000
+  timeout: number = 600000,
+  signal?: AbortSignal
 ): Promise<string> => {
   const resolved = resolveModel('chat', model);
   const apiBase = getApiBase('chat', model);
   const shouldUseGoogle = resolved?.providerId === 'google' || apiBase.includes('generativelanguage.googleapis.com');
 
   if (shouldUseGoogle) {
+    if (signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
     return callGoogleGenAiChatApi(
       {
         prompt,
@@ -255,7 +259,19 @@ export const chatCompletion = async (
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  let isTimeout = false;
+  const timeoutId = setTimeout(() => {
+    isTimeout = true;
+    controller.abort();
+  }, timeout);
+  const abortByExternal = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort();
+    } else {
+      signal.addEventListener('abort', abortByExternal, { once: true });
+    }
+  }
 
   try {
     const endpoint = resolved?.endpoint || '/v1/chat/completions';
@@ -277,10 +293,20 @@ export const chatCompletion = async (
     return data.choices?.[0]?.message?.content || '';
   } catch (error: any) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error(`请求超时（${timeout}ms）`);
+    if (signal) {
+      signal.removeEventListener('abort', abortByExternal);
+    }
+    if (error?.name === 'AbortError') {
+      if (isTimeout) {
+        throw new Error(`请求超时（${timeout}ms）`);
+      }
+      throw new DOMException('Aborted', 'AbortError');
     }
     throw error;
+  } finally {
+    if (signal) {
+      signal.removeEventListener('abort', abortByExternal);
+    }
   }
 };
 
@@ -293,13 +319,17 @@ export const chatCompletionStream = async (
   temperature: number = 0.7,
   responseFormat: 'json_object' | undefined,
   timeout: number = 600000,
-  onDelta?: (delta: string) => void
+  onDelta?: (delta: string) => void,
+  signal?: AbortSignal
 ): Promise<string> => {
   const resolved = resolveModel('chat', model);
   const apiBase = getApiBase('chat', model);
   const shouldUseGoogle = resolved?.providerId === 'google' || apiBase.includes('generativelanguage.googleapis.com');
 
   if (shouldUseGoogle) {
+    if (signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
     const result = await callGoogleGenAiChatApi(
       {
         prompt,
@@ -329,7 +359,19 @@ export const chatCompletionStream = async (
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  let isTimeout = false;
+  const timeoutId = setTimeout(() => {
+    isTimeout = true;
+    controller.abort();
+  }, timeout);
+  const abortByExternal = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort();
+    } else {
+      signal.addEventListener('abort', abortByExternal, { once: true });
+    }
+  }
 
   try {
     const endpoint = resolved?.endpoint || '/v1/chat/completions';
@@ -396,10 +438,20 @@ export const chatCompletionStream = async (
     return fullText;
   } catch (error: any) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error(`请求超时（${timeout}ms）`);
+    if (signal) {
+      signal.removeEventListener('abort', abortByExternal);
+    }
+    if (error?.name === 'AbortError') {
+      if (isTimeout) {
+        throw new Error(`请求超时（${timeout}ms）`);
+      }
+      throw new DOMException('Aborted', 'AbortError');
     }
     throw error;
+  } finally {
+    if (signal) {
+      signal.removeEventListener('abort', abortByExternal);
+    }
   }
 };
 

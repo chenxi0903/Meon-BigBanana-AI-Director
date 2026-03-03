@@ -1,13 +1,15 @@
 import React from 'react';
-import { Upload, Sparkles, Loader2 } from 'lucide-react';
+import { Upload, Sparkles, Loader2, X } from 'lucide-react';
 
 interface ImageUploadButtonProps {
   onUpload: (file: File) => void;
   onGenerate?: () => void;
+  onStop?: () => void;
   isGenerating?: boolean;
   hasImage?: boolean;
   uploadLabel?: string;
   generateLabel?: string;
+  stopLabel?: string;
   size?: 'small' | 'medium' | 'large';
   variant?: 'inline' | 'separate';
 }
@@ -15,10 +17,12 @@ interface ImageUploadButtonProps {
 const ImageUploadButton: React.FC<ImageUploadButtonProps> = ({
   onUpload,
   onGenerate,
+  onStop,
   isGenerating = false,
   hasImage = false,
   uploadLabel = '上传',
   generateLabel = '生成',
+  stopLabel = '停止',
   size = 'medium',
   variant = 'separate',
 }) => {
@@ -55,6 +59,15 @@ const ImageUploadButton: React.FC<ImageUploadButtonProps> = ({
             {generateLabel}
           </button>
         )}
+        {onStop && isGenerating && (
+          <button
+            onClick={onStop}
+            className={buttonClass}
+          >
+            <X className="w-3 h-3" />
+            {stopLabel}
+          </button>
+        )}
         <label className={buttonClass}>
           <Upload className="w-3 h-3" />
           {uploadLabel}
@@ -72,23 +85,23 @@ const ImageUploadButton: React.FC<ImageUploadButtonProps> = ({
   // Separate variant for regenerate + upload
   return (
     <div className="flex gap-2">
-      {onGenerate && hasImage && (
+      {onGenerate && hasImage && !isGenerating && (
         <button
           onClick={onGenerate}
           disabled={isGenerating}
           className={`flex-1 py-1.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border border-[var(--border-primary)] transition-colors`}
         >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-3 h-3 animate-spin" />
-              生成中...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-3 h-3" />
-              重新生成
-            </>
-          )}
+          <Sparkles className="w-3 h-3" />
+          重新生成
+        </button>
+      )}
+      {onStop && isGenerating && (
+        <button
+          onClick={onStop}
+          className={`flex-1 py-1.5 bg-[var(--error-bg)] hover:bg-[var(--error-hover-bg)] text-[var(--error-text)] border border-[var(--error-border)] rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors`}
+        >
+          <Loader2 className="w-3 h-3 animate-spin" />
+          {stopLabel}
         </button>
       )}
       <label className={`flex-1 py-1.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border border-[var(--border-primary)] transition-colors cursor-pointer`}>

@@ -121,6 +121,9 @@ const callGoogleGenAiImageApi = async (
   apiKey: string
 ): Promise<string> => {
   const apiModel = model.apiModel || model.id;
+  if (options.signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError');
+  }
   const genAI = new GoogleGenerativeAI(apiKey);
   const genModel = genAI.getGenerativeModel({ model: apiModel });
   const { parts, generationConfig } = buildImageGenerationRequest(options, model);
@@ -133,6 +136,9 @@ const callGoogleGenAiImageApi = async (
       });
     });
 
+    if (options.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
     const imageData = extractInlineImage(result.response);
     if (imageData) {
       return imageData;
@@ -198,6 +204,7 @@ export const callImageApi = async (
         'Accept': '*/*',
       },
       body: JSON.stringify(requestBody),
+      signal: options.signal,
     });
 
     if (!res.ok) {

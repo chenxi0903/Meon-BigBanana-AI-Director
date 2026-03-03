@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Users, Sparkles, RefreshCw, Loader2, MapPin, Archive, X, Search, Trash2, Package } from 'lucide-react';
 import { ProjectState, CharacterVariation, Character, Scene, Prop, AspectRatio, AssetLibraryItem, CharacterTurnaroundPanel } from '../../types';
 import { generateImage, generateVisualPrompts, generateCharacterTurnaroundPanels, generateCharacterTurnaroundImage } from '../../services/aiService';
@@ -46,6 +46,11 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   const [replaceTargetCharId, setReplaceTargetCharId] = useState<string | null>(null);
   const [turnaroundCharId, setTurnaroundCharId] = useState<string | null>(null);
   const [regeneratingPromptMap, setRegeneratingPromptMap] = useState<Record<string, boolean>>({});
+  const generationControllersRef = useRef<Record<string, AbortController>>({});
+  
+  const isAbortError = (e: any) => {
+    return e?.name === 'AbortError' || e instanceof DOMException;
+  };
   
   // 横竖屏选择状态（从持久化配置读取）
   const [aspectRatio, setAspectRatioState] = useState<AspectRatio>(() => getUserAspectRatio());
@@ -144,9 +149,62 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   // 组件卸载时重置生成状态
   useEffect(() => {
     return () => {
+      Object.values(generationControllersRef.current).forEach((controller) => controller.abort());
       onGeneratingChange?.(false);
     };
   }, []);
+
+  const startCancellableTask = async (key: string, task: (signal: AbortSignal) => Promise<void>) => {
+    generationControllersRef.current[key]?.abort();
+    const controller = new AbortController();
+    generationControllersRef.current[key] = controller;
+    try {
+      await task(controller.signal);
+    } finally {
+      if (generationControllersRef.current[key] === controller) {
+        delete generationControllersRef.current[key];
+      }
+    }
+  };
+
+  const handleStopTurnaroundGeneration = (charId: string) => {
+    const char = project.scriptData?.characters.find(c => compareIds(c.id, charId));
+    const status = char?.turnaround?.status;
+    if (status === 'generating_panels') {
+      cancelTask(`turnaround:panels:${charId}`);
+      updateProject((prev) => {
+        if (!prev.scriptData) return prev;
+        const newData = { ...prev.scriptData };
+        const c = newData.characters.find(c => compareIds(c.id, charId));
+        if (c?.turnaround?.status === 'generating_panels') {
+          c.turnaround = { panels: [], status: 'pending' };
+        }
+        return { ...prev, scriptData: newData };
+      });
+      showAlert('已停止生成', { type: 'info' });
+      return;
+    }
+    if (status === 'generating_image') {
+      cancelTask(`turnaround:image:${charId}`);
+      updateProject((prev) => {
+        if (!prev.scriptData) return prev;
+        const newData = { ...prev.scriptData };
+        const c = newData.characters.find(c => compareIds(c.id, charId));
+        if (c?.turnaround?.status === 'generating_image') {
+          c.turnaround.status = 'panels_ready';
+        }
+        return { ...prev, scriptData: newData };
+      });
+      showAlert('已停止生成', { type: 'info' });
+    }
+  };
+
+  const cancelTask = (key: string) => {
+    const controller = generationControllersRef.current[key];
+    if (!controller) return;
+    controller.abort();
+    delete generationControllersRef.current[key];
+  };
 
   const refreshLibrary = async () => {
     setLibraryLoading(true);
@@ -175,7 +233,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   /**
    * 生成资源（角色或场景）
    */
-  const handleGenerateAsset = async (type: 'character' | 'scene', id: string) => {
+  const handleGenerateAsset = async (type: 'character' | 'scene', id: string, signal?: AbortSignal) => {
     // 设置生成状态
     if (project.scriptData) {
       const newData = { ...project.scriptData };
@@ -197,7 +255,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
           if (char.visualPrompt) {
             prompt = char.visualPrompt;
           } else {
-            const prompts = await generateVisualPrompts('character', char, genre, activeChatModelName, visualStyle, language);
+            const prompts = await generateVisualPrompts('character', char, genre, activeChatModelName, visualStyle, language, project.scriptData?.artDirection, signal);
+            if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
             prompt = prompts.visualPrompt;
             
             // 保存生成的提示词
@@ -218,7 +277,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
           if (scene.visualPrompt) {
             prompt = scene.visualPrompt;
           } else {
-            const prompts = await generateVisualPrompts('scene', scene, genre, activeChatModelName, visualStyle, language);
+            const prompts = await generateVisualPrompts('scene', scene, genre, activeChatModelName, visualStyle, language, project.scriptData?.artDirection, signal);
+            if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
             prompt = prompts.visualPrompt;
             
             // 保存生成的提示词
@@ -245,7 +305,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
       }
 
       // 生成图片（使用选择的横竖屏比例）
-      const imageUrl = await generateImage(enhancedPrompt, [], aspectRatio);
+      const imageUrl = await generateImage(enhancedPrompt, [], aspectRatio, false, false, signal);
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
       // 更新状态
       if (project.scriptData) {
@@ -268,6 +329,9 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
 
     } catch (e: any) {
       console.error(e);
+      if (isAbortError(e) || signal?.aborted) {
+        return;
+      }
       // 设置失败状态
       if (project.scriptData) {
         const newData = { ...project.scriptData };
@@ -284,6 +348,29 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
         return;
       }
     }
+  };
+
+  const handleStartGenerateAsset = async (type: 'character' | 'scene', id: string) => {
+    const key = `asset:${type}:${id}`;
+    await startCancellableTask(key, (signal) => handleGenerateAsset(type, id, signal));
+  };
+
+  const handleStopGenerateAsset = (type: 'character' | 'scene', id: string) => {
+    const key = `asset:${type}:${id}`;
+    cancelTask(key);
+    updateProject((prev) => {
+      if (!prev.scriptData) return prev;
+      const newData = { ...prev.scriptData };
+      if (type === 'character') {
+        const c = newData.characters.find(c => compareIds(c.id, id));
+        if (c && c.status === 'generating') c.status = 'pending';
+      } else {
+        const s = newData.scenes.find(s => compareIds(s.id, id));
+        if (s && s.status === 'generating') s.status = 'pending';
+      }
+      return { ...prev, scriptData: newData };
+    });
+    showAlert('已停止生成', { type: 'info' });
   };
 
   /**
@@ -319,7 +406,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
     for (let i = 0; i < targetItems.length; i++) {
       if (i > 0) await delay(DEFAULTS.batchGenerateDelay);
       
-      await handleGenerateAsset(type, targetItems[i].id);
+      await handleStartGenerateAsset(type, targetItems[i].id);
       setBatchProgress({ current: i + 1, total: targetItems.length });
     }
 
@@ -1008,28 +1095,35 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
     });
 
     try {
-      const panels = await generateCharacterTurnaroundPanels(
-        char,
-        visualStyle,
-        project.scriptData?.artDirection,
-        language
-      );
+      const key = `turnaround:panels:${charId}`;
+      await startCancellableTask(key, async (signal) => {
+        const panels = await generateCharacterTurnaroundPanels(
+          char,
+          visualStyle,
+          project.scriptData?.artDirection,
+          language,
+          undefined,
+          signal
+        );
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-      // 更新状态为 panels_ready
-      updateProject((prev) => {
-        if (!prev.scriptData) return prev;
-        const newData = { ...prev.scriptData };
-        const c = newData.characters.find(c => compareIds(c.id, charId));
-        if (c) {
-          c.turnaround = {
-            panels,
-            status: 'panels_ready',
-          };
-        }
-        return { ...prev, scriptData: newData };
+        // 更新状态为 panels_ready
+        updateProject((prev) => {
+          if (!prev.scriptData) return prev;
+          const newData = { ...prev.scriptData };
+          const c = newData.characters.find(c => compareIds(c.id, charId));
+          if (c) {
+            c.turnaround = {
+              panels,
+              status: 'panels_ready',
+            };
+          }
+          return { ...prev, scriptData: newData };
+        });
       });
     } catch (e: any) {
       console.error('九宫格视角描述生成失败:', e);
+      if (isAbortError(e)) return;
       updateProject((prev) => {
         if (!prev.scriptData) return prev;
         const newData = { ...prev.scriptData };
@@ -1064,27 +1158,33 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
     });
 
     try {
-      const imageUrl = await generateCharacterTurnaroundImage(
-        char,
-        panels,
-        visualStyle,
-        char.referenceImage,
-        project.scriptData?.artDirection
-      );
+      const key = `turnaround:image:${charId}`;
+      await startCancellableTask(key, async (signal) => {
+        const imageUrl = await generateCharacterTurnaroundImage(
+          char,
+          panels,
+          visualStyle,
+          char.referenceImage,
+          project.scriptData?.artDirection,
+          signal
+        );
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-      // 更新状态为 completed
-      updateProject((prev) => {
-        if (!prev.scriptData) return prev;
-        const newData = { ...prev.scriptData };
-        const c = newData.characters.find(c => compareIds(c.id, charId));
-        if (c && c.turnaround) {
-          c.turnaround.imageUrl = imageUrl;
-          c.turnaround.status = 'completed';
-        }
-        return { ...prev, scriptData: newData };
+        // 更新状态为 completed
+        updateProject((prev) => {
+          if (!prev.scriptData) return prev;
+          const newData = { ...prev.scriptData };
+          const c = newData.characters.find(c => compareIds(c.id, charId));
+          if (c && c.turnaround) {
+            c.turnaround.imageUrl = imageUrl;
+            c.turnaround.status = 'completed';
+          }
+          return { ...prev, scriptData: newData };
+        });
       });
     } catch (e: any) {
       console.error('九宫格造型图片生成失败:', e);
+      if (isAbortError(e)) return;
       updateProject((prev) => {
         if (!prev.scriptData) return prev;
         const newData = { ...prev.scriptData };
@@ -1210,6 +1310,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
             onClose={() => setTurnaroundCharId(null)}
             onGeneratePanels={handleGenerateTurnaroundPanels}
             onConfirmPanels={handleConfirmTurnaroundPanels}
+            onStopGenerate={handleStopTurnaroundGeneration}
             onUpdatePanel={handleUpdateTurnaroundPanel}
             onRegenerate={handleRegenerateTurnaround}
             onRegenerateImage={handleRegenerateTurnaroundImage}
@@ -1466,7 +1567,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 character={char}
                 isGenerating={char.status === 'generating'}
                 isRegeneratingPrompt={!!regeneratingPromptMap[char.id]}
-                onGenerate={() => handleGenerateAsset('character', char.id)}
+                onGenerate={() => handleStartGenerateAsset('character', char.id)}
+                onStopGenerate={() => handleStopGenerateAsset('character', char.id)}
                 onUpload={(file) => handleUploadCharacterImage(char.id, file)}
                 onPromptSave={(newPrompt) => handleSaveCharacterPrompt(char.id, newPrompt)}
                 onOpenWardrobe={() => setSelectedCharId(char.id)}
@@ -1526,7 +1628,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 key={scene.id}
                 scene={scene}
                 isGenerating={scene.status === 'generating'}
-                onGenerate={() => handleGenerateAsset('scene', scene.id)}
+                onGenerate={() => handleStartGenerateAsset('scene', scene.id)}
                 onUpload={(file) => handleUploadSceneImage(scene.id, file)}
                 onPromptSave={(newPrompt) => handleSaveScenePrompt(scene.id, newPrompt)}
                 onImageClick={setPreviewImage}

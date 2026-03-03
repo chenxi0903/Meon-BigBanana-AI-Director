@@ -185,6 +185,7 @@ export interface ImageGenerateOptions {
   prompt: string;
   referenceImages?: string[];
   aspectRatio?: AspectRatio;
+  signal?: AbortSignal;
 }
 
 /**

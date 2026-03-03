@@ -70,8 +70,8 @@ const mapAspectRatioToJimeng = (ratio: AspectRatio): string => {
 /**
  * 下载图片 URL 并转为 base64
  */
-const downloadImageAsBase64 = async (url: string): Promise<string> => {
-  const response = await fetch(url);
+const downloadImageAsBase64 = async (url: string, signal?: AbortSignal): Promise<string> => {
+  const response = await fetch(url, { signal });
   if (!response.ok) {
     throw new Error(`图片下载失败: HTTP ${response.status}`);
   }
@@ -140,6 +140,7 @@ const callJimengTextToImage = async (
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal: options.signal,
     });
 
     if (!res.ok) {
@@ -167,7 +168,7 @@ const callJimengTextToImage = async (
   console.log('✅ 即梦文生图成功，正在下载图片...');
 
   // 下载图片转 base64
-  const base64 = await downloadImageAsBase64(imageUrl);
+  const base64 = await downloadImageAsBase64(imageUrl, options.signal);
   console.log('✅ 即梦图片已转换为 base64');
   return base64;
 };
@@ -235,6 +236,7 @@ const callJimengImageToImage = async (
           'Authorization': `Bearer ${apiKey}`,
         },
         body: formData,
+        signal: options.signal,
       });
 
       if (!res.ok) {
@@ -279,6 +281,7 @@ const callJimengImageToImage = async (
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify(requestBody),
+        signal: options.signal,
       });
 
       if (!res.ok) {
@@ -306,7 +309,7 @@ const callJimengImageToImage = async (
   const imageUrl = data[0].url;
   console.log('✅ 即梦图生图成功，正在下载图片...');
 
-  const base64 = await downloadImageAsBase64(imageUrl);
+  const base64 = await downloadImageAsBase64(imageUrl, options.signal);
   console.log('✅ 即梦图片已转换为 base64');
   return base64;
 };

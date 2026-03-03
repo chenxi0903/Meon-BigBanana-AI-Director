@@ -200,7 +200,8 @@ export const generateVisualPrompts = async (
   model: string = 'gpt-5.1',
   visualStyle: string = 'live-action',
   language: string = '中文',
-  artDirection?: ArtDirection
+  artDirection?: ArtDirection,
+  signal?: AbortSignal
 ): Promise<{ visualPrompt: string; negativePrompt: string }> => {
   const stylePrompt = getStylePrompt(visualStyle);
   const negativePrompt = type === 'scene'
@@ -245,7 +246,7 @@ Mood Keywords: ${artDirection.moodKeywords.join(', ')}
     );
   }
 
-  const visualPrompt = await retryOperation(() => chatCompletion(prompt, model, 0.5, 1024));
+  const visualPrompt = await retryOperation(() => chatCompletion(prompt, model, 0.5, 1024, undefined, 600000, signal));
 
   // 针对 Jimeng 等模型，限制提示词长度
   let finalVisualPrompt = visualPrompt.trim();
@@ -273,7 +274,8 @@ export const generateImage = async (
   referenceImages: string[] = [],
   aspectRatio: AspectRatio = '16:9',
   isVariation: boolean = false,
-  hasTurnaround: boolean = false
+  hasTurnaround: boolean = false,
+  signal?: AbortSignal
 ): Promise<string> => {
   const startTime = Date.now();
 
@@ -288,6 +290,7 @@ export const generateImage = async (
           prompt,
           referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
           aspectRatio,
+          signal,
         },
         activeImageModel as ImageModelDefinition
       );
@@ -335,6 +338,7 @@ export const generateImage = async (
         prompt: finalPrompt,
         referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
         aspectRatio,
+        signal,
       },
       activeImageModel as ImageModelDefinition | undefined
     );
@@ -405,7 +409,8 @@ export const generateCharacterTurnaroundPanels = async (
   visualStyle: string,
   artDirection?: ArtDirection,
   language: string = '中文',
-  model: string = 'gpt-5.1'
+  model: string = 'gpt-5.1',
+  signal?: AbortSignal
 ): Promise<CharacterTurnaroundPanel[]> => {
   console.log(`🎭 generateCharacterTurnaroundPanels - 为角色 ${character.name} 生成九宫格造型视角`);
   logScriptProgress(`正在为角色「${character.name}」生成九宫格造型视角描述...`);
@@ -431,7 +436,7 @@ Lighting: ${artDirection.lightingStyle}, Texture: ${artDirection.textureStyle}
   const prompt = buildTurnaroundPanelPrompt(visualStyle, stylePrompt, artDirectionBlock, character);
 
   try {
-    const responseText = await retryOperation(() => chatCompletion(prompt, resolvedModelId, 0.4, 4096, 'json_object'));
+    const responseText = await retryOperation(() => chatCompletion(prompt, resolvedModelId, 0.4, 4096, 'json_object', 600000, signal));
     const text = cleanJsonString(responseText);
     const parsed = JSON.parse(text);
 
@@ -474,7 +479,8 @@ export const generateCharacterTurnaroundImage = async (
   panels: CharacterTurnaroundPanel[],
   visualStyle: string,
   referenceImage?: string,
-  artDirection?: ArtDirection
+  artDirection?: ArtDirection,
+  signal?: AbortSignal
 ): Promise<string> => {
   console.log(`🖼️ generateCharacterTurnaroundImage - 为角色 ${character.name} 生成九宫格造型图片`);
   logScriptProgress(`正在为角色「${character.name}」生成九宫格造型图片...`);
@@ -509,7 +515,7 @@ export const generateCharacterTurnaroundImage = async (
 
   try {
     // 使用 1:1 比例生成九宫格（正方形最适合3x3网格）
-    const imageUrl = await generateImage(prompt, referenceImages, '1:1');
+    const imageUrl = await generateImage(prompt, referenceImages, '1:1', false, false, signal);
     console.log(`✅ 角色 ${character.name} 九宫格造型图片生成完成`);
     logScriptProgress(`角色「${character.name}」九宫格造型图片生成完成`);
     return imageUrl;

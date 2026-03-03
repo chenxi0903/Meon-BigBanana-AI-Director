@@ -8,6 +8,7 @@ interface TurnaroundModalProps {
   onClose: () => void;
   onGeneratePanels: (charId: string) => void;
   onConfirmPanels: (charId: string, panels: CharacterTurnaroundPanel[]) => void;
+  onStopGenerate: (charId: string) => void;
   onUpdatePanel: (charId: string, index: number, panel: Partial<CharacterTurnaroundPanel>) => void;
   onRegenerate: (charId: string) => void;
   onRegenerateImage: (charId: string) => void; // 仅重新生成图片（保留已有的视角描述）
@@ -19,6 +20,7 @@ const TurnaroundModal: React.FC<TurnaroundModalProps> = ({
   onClose,
   onGeneratePanels,
   onConfirmPanels,
+  onStopGenerate,
   onUpdatePanel,
   onRegenerate,
   onRegenerateImage,
@@ -169,6 +171,12 @@ const TurnaroundModal: React.FC<TurnaroundModalProps> = ({
               <p className="text-sm text-[var(--text-tertiary)]">
                 AI正在为角色「{character.name}」设计9个不同视角的描述，请耐心等待
               </p>
+              <button
+                onClick={() => onStopGenerate(character.id)}
+                className="mt-6 px-4 py-2 bg-[var(--error-bg)] hover:bg-[var(--error-hover-bg)] text-[var(--error-text)] border border-[var(--error-border)] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors"
+              >
+                停止生成
+              </button>
             </div>
           )}
 
@@ -182,6 +190,12 @@ const TurnaroundModal: React.FC<TurnaroundModalProps> = ({
               <p className="text-sm text-[var(--text-tertiary)]">
                 根据视角描述为角色「{character.name}」生成多视角参考图，请耐心等待
               </p>
+              <button
+                onClick={() => onStopGenerate(character.id)}
+                className="mt-6 px-4 py-2 bg-[var(--error-bg)] hover:bg-[var(--error-hover-bg)] text-[var(--error-text)] border border-[var(--error-border)] rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors"
+              >
+                停止生成
+              </button>
               {/* 显示已确认的视角列表 */}
               {turnaround?.panels && turnaround.panels.length > 0 && (
                 <div className="mt-6 w-full max-w-lg space-y-1.5 px-6">
