@@ -23,6 +23,7 @@ import { getAllAssetLibraryItems, saveAssetToLibrary, deleteAssetFromLibrary } f
 import { applyLibraryItemToProject, createLibraryItemFromCharacter, createLibraryItemFromScene, createLibraryItemFromProp, cloneCharacterForProject } from '../../services/assetLibraryService';
 import { AspectRatioSelector } from '../AspectRatioSelector';
 import { getUserAspectRatio, setUserAspectRatio, getActiveImageModel } from '../../services/modelRegistry';
+import { getActiveChatModelName } from '../../services/ai/apiCore';
 
 interface Props {
   project: ProjectState;
@@ -59,6 +60,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   const language = getProjectLanguage(project.language, project.scriptData?.language);
   const visualStyle = getProjectVisualStyle(project.visualStyle, project.scriptData?.visualStyle);
   const genre = project.scriptData?.genre || DEFAULTS.genre;
+  const activeChatModelName = getActiveChatModelName();
 
   /**
    * 组件加载时，检测并重置卡住的生成状态
@@ -194,7 +196,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
           if (char.visualPrompt) {
             prompt = char.visualPrompt;
           } else {
-            const prompts = await generateVisualPrompts('character', char, genre, DEFAULTS.modelVersion, visualStyle, language);
+            const prompts = await generateVisualPrompts('character', char, genre, activeChatModelName, visualStyle, language);
             prompt = prompts.visualPrompt;
             
             // 保存生成的提示词
@@ -215,7 +217,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
           if (scene.visualPrompt) {
             prompt = scene.visualPrompt;
           } else {
-            const prompts = await generateVisualPrompts('scene', scene, genre, DEFAULTS.modelVersion, visualStyle, language);
+            const prompts = await generateVisualPrompts('scene', scene, genre, activeChatModelName, visualStyle, language);
             prompt = prompts.visualPrompt;
             
             // 保存生成的提示词
@@ -490,7 +492,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
     if (!char) return;
 
     try {
-      const prompts = await generateVisualPrompts('character', char, genre, DEFAULTS.modelVersion, visualStyle, language);
+      const prompts = await generateVisualPrompts('character', char, genre, activeChatModelName, visualStyle, language);
       const newData = { ...project.scriptData };
       const target = newData.characters.find(c => compareIds(c.id, charId));
       if (target) {
