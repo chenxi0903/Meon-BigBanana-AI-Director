@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Aperture, Edit2, Check, X, UserPlus, Trash2, Plus, ChevronRight, ChevronDown } from 'lucide-react';
+import { Aperture, Edit2, Check, X, UserPlus, Trash2, Plus, ChevronRight, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { Shot, Character, ScriptData } from '../../types';
 import InlineEditor from './InlineEditor';
 import { STYLES } from './constants';
@@ -26,6 +26,7 @@ interface Props {
   onCancelAction: () => void;
   onAddSubShot: (shotId: string) => void;
   onDeleteShot: (shotId: string) => void;
+  onMoveShot: (shotId: string, direction: 'up' | 'down') => void;
 }
 
 const ShotRow: React.FC<Props> = ({
@@ -49,7 +50,8 @@ const ShotRow: React.FC<Props> = ({
   onSaveAction,
   onCancelAction,
   onAddSubShot,
-  onDeleteShot
+  onDeleteShot,
+  onMoveShot
 }) => {
   // 从shot.id中提取显示编号
   // 例如：shot-1 → "SHOT 001", shot-1-1 → "SHOT 001-1"
@@ -77,6 +79,13 @@ const ShotRow: React.FC<Props> = ({
         <div className="flex items-center justify-between gap-2 text-xs font-mono text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors">
           <span>{getShotDisplayNumber()}</span>
           <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => onMoveShot(shot.id, e.shiftKey ? 'down' : 'up')}
+              className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all opacity-0 group-hover:opacity-100"
+              title="上移镜头（Shift+点击下移）"
+            >
+              <ArrowUpDown className="w-3 h-3" />
+            </button>
             <button
               onClick={() => onAddSubShot(shot.id)}
               className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all opacity-0 group-hover:opacity-100"

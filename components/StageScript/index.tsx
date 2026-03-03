@@ -558,6 +558,17 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     });
   };
 
+  const handleMoveShot = (shotId: string, direction: 'up' | 'down') => {
+    const shotIndex = project.shots.findIndex(s => s.id === shotId);
+    if (shotIndex < 0) return;
+    const targetIndex = direction === 'up' ? shotIndex - 1 : shotIndex + 1;
+    if (targetIndex < 0 || targetIndex >= project.shots.length) return;
+    const nextShots = [...project.shots];
+    const [moved] = nextShots.splice(shotIndex, 1);
+    nextShots.splice(targetIndex, 0, moved);
+    updateProject({ shots: nextShots });
+  };
+
   return (
     <div className="h-full bg-[var(--bg-base)]">
       {showProcessingToast && (
@@ -638,6 +649,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
           onAddShot={handleAddShot}
           onAddSubShot={handleAddSubShot}
           onDeleteShot={handleDeleteShot}
+          onMoveShot={handleMoveShot}
           onBackToStory={() => setActiveTab('story')}
         />
       )}

@@ -45,6 +45,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   const [libraryProjectFilter, setLibraryProjectFilter] = useState('all');
   const [replaceTargetCharId, setReplaceTargetCharId] = useState<string | null>(null);
   const [turnaroundCharId, setTurnaroundCharId] = useState<string | null>(null);
+  const [regeneratingPromptMap, setRegeneratingPromptMap] = useState<Record<string, boolean>>({});
   
   // 横竖屏选择状态（从持久化配置读取）
   const [aspectRatio, setAspectRatioState] = useState<AspectRatio>(() => getUserAspectRatio());
@@ -492,6 +493,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
     if (!char) return;
 
     try {
+      setRegeneratingPromptMap((prev) => ({ ...prev, [charId]: true }));
       const prompts = await generateVisualPrompts('character', char, genre, activeChatModelName, visualStyle, language);
       const newData = { ...project.scriptData };
       const target = newData.characters.find(c => compareIds(c.id, charId));
@@ -507,6 +509,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
         return;
       }
       showAlert('重新生成角色提示词失败，请稍后重试', { type: 'error' });
+    } finally {
+      setRegeneratingPromptMap((prev) => ({ ...prev, [charId]: false }));
     }
   };
 
@@ -1461,6 +1465,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 key={char.id}
                 character={char}
                 isGenerating={char.status === 'generating'}
+                isRegeneratingPrompt={!!regeneratingPromptMap[char.id]}
                 onGenerate={() => handleGenerateAsset('character', char.id)}
                 onUpload={(file) => handleUploadCharacterImage(char.id, file)}
                 onPromptSave={(newPrompt) => handleSaveCharacterPrompt(char.id, newPrompt)}

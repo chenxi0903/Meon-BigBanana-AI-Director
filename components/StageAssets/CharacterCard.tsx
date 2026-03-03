@@ -7,6 +7,7 @@ import ImageUploadButton from './ImageUploadButton';
 interface CharacterCardProps {
   character: Character;
   isGenerating: boolean;
+  isRegeneratingPrompt?: boolean;
   onGenerate: () => void;
   onUpload: (file: File) => void;
   onPromptSave: (newPrompt: string) => void;
@@ -23,6 +24,7 @@ interface CharacterCardProps {
 const CharacterCard: React.FC<CharacterCardProps> = ({
   character,
   isGenerating,
+  isRegeneratingPrompt = false,
   onGenerate,
   onUpload,
   onPromptSave,
@@ -256,6 +258,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
             label="角色提示词"
             placeholder="输入角色的视觉描述..."
             onRegenerate={onRegeneratePrompt}
+            isRegenerating={isRegeneratingPrompt}
           />
         </div>
 

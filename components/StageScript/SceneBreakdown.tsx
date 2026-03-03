@@ -32,6 +32,7 @@ interface Props {
   onAddShot: (sceneId: string) => void;
   onAddSubShot: (shotId: string) => void;
   onDeleteShot: (shotId: string) => void;
+  onMoveShot: (shotId: string, direction: 'up' | 'down') => void;
   onBackToStory: () => void;
 }
 
@@ -61,6 +62,7 @@ const SceneBreakdown: React.FC<Props> = ({
   onAddShot,
   onAddSubShot,
   onDeleteShot,
+  onMoveShot,
   onBackToStory
 }) => {
   const uniqueScenes = deduplicateScenes(project.scriptData?.scenes);
@@ -185,6 +187,7 @@ const SceneBreakdown: React.FC<Props> = ({
                           onCancelAction={onCancelShotAction}
                           onAddSubShot={onAddSubShot}
                           onDeleteShot={onDeleteShot}
+                          onMoveShot={onMoveShot}
                         />
                       ))}
                     </div>

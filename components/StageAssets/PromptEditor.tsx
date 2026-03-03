@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, Save, AlertCircle, Camera, Sparkles } from 'lucide-react';
+import { Edit3, Save, AlertCircle, Camera, Sparkles, Loader2 } from 'lucide-react';
 
 interface PromptEditorProps {
   prompt: string;
@@ -8,6 +8,7 @@ interface PromptEditorProps {
   placeholder?: string;
   maxHeight?: string;
   onRegenerate?: () => void;
+  isRegenerating?: boolean;
 }
 
 const PromptEditor: React.FC<PromptEditorProps> = ({
@@ -17,6 +18,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   placeholder = '输入视觉描述...',
   maxHeight = 'max-h-[260px]',
   onRegenerate,
+  isRegenerating = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedPrompt, setEditedPrompt] = useState(prompt);
@@ -48,11 +50,21 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
             {onRegenerate && (
               <button
                 onClick={onRegenerate}
-                className="text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors p-1 hover:bg-[var(--bg-hover)] rounded"
-                title="重新生成角色提示词"
+                disabled={isRegenerating}
+                className="text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors p-1 hover:bg-[var(--bg-hover)] rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isRegenerating ? '正在生成提示词' : '重新生成角色提示词'}
               >
-                <Sparkles className="w-3 h-3" />
+                {isRegenerating ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3 h-3" />
+                )}
               </button>
+            )}
+            {isRegenerating && (
+              <span className="text-[9px] text-[var(--warning-text)] font-mono flex items-center gap-1">
+                生成中
+              </span>
             )}
             <button
               onClick={handleStartEdit}
