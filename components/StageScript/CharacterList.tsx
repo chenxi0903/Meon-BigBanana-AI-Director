@@ -42,7 +42,7 @@ const CharacterList: React.FC<Props> = ({
                     <span className="text-sm text-[var(--text-secondary)] font-medium group-hover:text-[var(--text-primary)]">{c.name}</span>
                     <span className="text-[10px] text-[var(--text-muted)] font-mono">{c.gender}</span>
                     <button
-                      onClick={() => setCollapsedMap((prev) => ({ ...prev, [c.id]: !isExpanded }))}
+                      onClick={() => setCollapsedMap((prev) => ({ ...prev, [c.id]: !isCollapsed }))}
                       className="p-1 hover:bg-[var(--bg-hover)] rounded transition-colors"
                       title={isExpanded ? '收起提示词' : '展开提示词'}
                     >
