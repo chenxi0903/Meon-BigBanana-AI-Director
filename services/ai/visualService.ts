@@ -378,6 +378,9 @@ export const generateCharacterThreeViewImage = async (
   modelId?: string,
   signal?: AbortSignal
 ): Promise<{ imageUrl: string; prompt: string; modelId: string }> => {
+  if (!character.referenceImage) {
+    throw new Error('三视图生成需要先有角色参考图');
+  }
   const prompt = buildThreeViewPrompt({ character, visualStyle, language });
 
   const preferredModelId = isModelAvailable('jimeng-4.6') ? 'jimeng-4.6' : undefined;
@@ -390,7 +393,7 @@ export const generateCharacterThreeViewImage = async (
     throw new Error('没有可用的图片模型');
   }
 
-  const referenceImages = character.referenceImage ? [character.referenceImage] : undefined;
+  const referenceImages = [character.referenceImage];
   const imageUrl = await callImageApi(
     {
       prompt,

@@ -1240,28 +1240,9 @@ export const buildThreeViewPrompt = (options: {
   visualStyle: string;
   language?: string;
 }): string => {
-  const { character, visualStyle } = options;
-  const language = options.language || '中文';
-  const stylePromptCN = getStylePromptCN(visualStyle);
-  const fallback = `你是一位专业的角色概念设计师。请为以下角色生成一张角色设计表三视图图像。
-
-## 角色信息
-名称：\${character.name}
-性别：\${character.gender}
-年龄：\${character.age}
-性格：\${character.personality}
-角色描述：\${character.visualPrompt}
-
-## 视觉风格
-\${stylePromptCN}
-
-## 任务要求
-角色设计表，三视图（正面，侧面，背面），全身人像，九头身完美比例。左侧排列高清特写大头照（多角度情绪展示）。
-纯白色背景，极简底色。顶级画质，8k分辨率，高精细纹理，边缘清晰。室内均匀光效，无阴影干扰。
-
-输出仅包含用于图像生成的提示词正文。语言：${language}。`;
+  const fallback = `角色设计表，三视图（正面，侧面，背面），全身人像，九头身完美比例。左侧排列高清特写大头照。`;
   const template = getEffectivePrompt('buildThreeViewPrompt', fallback);
-  return applyTemplate(template, { character, visualStyle, language, stylePromptCN });
+  return applyTemplate(template, options as any).trim();
 };
 
 export const buildTurnaroundPanelPrompt = (

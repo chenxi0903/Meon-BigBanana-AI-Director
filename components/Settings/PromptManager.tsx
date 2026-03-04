@@ -74,7 +74,7 @@ const PROMPT_CATEGORIES = [
       { id: 'buildScenePrompt', title: '单场景视觉', type: 'Prompt', isDefault: true, usage: '生成单个场景视觉提示词。', content: 'Describe the environment in rich detail, specifying architecture, weather, time of day, and atmosphere...' }, 
       { id: 'buildOutfitVariationPrompt', title: '角色换装版本', type: 'Prompt', isDefault: true, usage: '基于角色提示词生成换装版本。', content: 'Keep the character face and body strictly consistent, but change their outfit to match the new description...' }, 
       { id: 'buildConsistencyPrompt', title: '角色一致性控制', type: 'Prompt', isDefault: true, usage: '生成角色一致性控制提示词。', content: 'Apply strict consistency tokens to ensure the character remains identical across multiple seed variations...' }, 
-      { id: 'buildThreeViewPrompt', title: '三视图提示词', type: 'Prompt', isDefault: true, usage: '生成角色三视图设计表（正面/侧面/背面）用于角色一致性参考。', content: '角色设计表，三视图（正面，侧面，背面），全身人像，九头身完美比例。左侧排列高清特写大头照（多角度情绪展示）。\n纯白色背景，极简底色。顶级画质，8k分辨率，高精细纹理，边缘清晰。室内均匀光效，无阴影干扰。' },
+      { id: 'buildThreeViewPrompt', title: '三视图提示词', type: 'Prompt', isDefault: true, usage: '生成角色三视图设计表（正面/侧面/背面）用于角色一致性参考。', content: '角色设计表，三视图（正面，侧面，背面），全身人像，九头身完美比例。左侧排列高清特写大头照。' },
     ] 
   } 
 ];
