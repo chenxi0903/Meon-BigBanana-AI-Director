@@ -522,6 +522,8 @@ function App() {
         setStage={setStage} 
         onExit={handleExitProject} 
         projectName={project.title}
+        seasonName={project.seriesData?.seasons.find(s => s.episodes.some(e => e.id === project.activeEpisodeId))?.title}
+        episodeName={project.seriesData?.seasons.flatMap(s => s.episodes).find(e => e.id === project.activeEpisodeId)?.title}
         onShowOnboarding={handleShowOnboarding}
         onShowModelConfig={() => setShowModelConfig(true)}
         isNavigationLocked={isGenerating}

@@ -8,12 +8,15 @@ interface SidebarProps {
   setStage: (stage: 'script' | 'assets' | 'director' | 'export' | 'prompts') => void;
   onExit: () => void;
   projectName?: string;
+  // Added props for series info
+  seasonName?: string;
+  episodeName?: string;
   onShowOnboarding?: () => void;
   onShowModelConfig?: () => void;
   isNavigationLocked?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, projectName, onShowOnboarding, onShowModelConfig, isNavigationLocked }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, projectName, seasonName, episodeName, onShowOnboarding, onShowModelConfig, isNavigationLocked }) => {
   const { theme, toggleTheme } = useTheme();
   const navItems = [
     { id: 'script', label: '剧本与故事', icon: FileText, sub: 'Phase 01' },
@@ -57,7 +60,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, proje
       {/* Project Status */}
       <div className="px-6 py-4 border-b border-[var(--border-subtle)]">
          <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-1">当前项目</div>
-         <div className="text-sm font-medium text-[var(--text-secondary)] truncate font-mono">{projectName || '未命名项目'}</div>
+         <div className="text-sm font-medium text-[var(--text-secondary)] truncate font-mono mb-1">{projectName || '未命名项目'}</div>
+         {(seasonName || episodeName) && (
+            <div className="flex items-center gap-2 text-[10px] text-[var(--text-tertiary)] font-mono">
+               {seasonName && <span className="bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">{seasonName}</span>}
+               {episodeName && <span className="bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">{episodeName}</span>}
+            </div>
+         )}
       </div>
 
       {/* Generation Lock Indicator */}

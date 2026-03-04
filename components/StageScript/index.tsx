@@ -101,6 +101,30 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
       return;
     }
 
+    // Auto-format title if in series mode
+    let finalTitle = localTitle;
+    if (project.type === 'series' && project.activeEpisodeId && project.seriesData) {
+        // Find current season/episode
+        let seasonName = '';
+        let episodeName = '';
+        for (const season of project.seriesData.seasons) {
+            const ep = season.episodes.find(e => e.id === project.activeEpisodeId);
+            if (ep) {
+                seasonName = season.title;
+                episodeName = ep.title;
+                break;
+            }
+        }
+        
+        // Format: 项目名称-剧集名-集数
+        // e.g. 风的形状-第一季-第一集
+        if (seasonName && episodeName) {
+            // Keep the base project title clean in the UI state, but use formatted for script data
+            // Actually, we should probably update the scriptData title to be unique
+            finalTitle = `${project.title}-${seasonName}-${episodeName}`;
+        }
+    }
+
     console.log('🎯 用户选择的模型:', localModel);
     console.log('🎯 最终使用的模型:', finalModel);
     console.log('🎨 视觉风格:', finalVisualStyle);
@@ -114,7 +138,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setError(null);
     try {
       updateProject({
-        title: localTitle,
+        title: project.title, // Keep project level title clean
         rawScript: localScript,
         targetDuration: finalDuration,
         language: localLanguage,
@@ -138,10 +162,9 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
       scriptData.language = localLanguage;
       scriptData.visualStyle = finalVisualStyle;
       scriptData.shotGenerationModel = finalModel;
-
-      if (localTitle && localTitle !== "未命名项目") {
-        scriptData.title = localTitle;
-      }
+      
+      // Set the specific episode title
+      scriptData.title = finalTitle;
 
       console.log('📞 调用 generateShotList, 传入模型:', finalModel);
       logScriptProgress('开始生成分镜...');
@@ -152,7 +175,8 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
         scriptData, 
         shots, 
         isParsingScript: false,
-        title: scriptData.title 
+        // Don't overwrite project title with script title in series mode
+        title: project.type === 'series' ? project.title : scriptData.title 
       });
       
       setActiveTab('script');

@@ -10,6 +10,22 @@ interface Props {
 }
 
 const StatusPanel: React.FC<Props> = ({ project, progress, estimatedDuration }) => {
+  // Find Series Info if available
+  const activeEpisodeId = project.activeEpisodeId;
+  let seasonTitle = '';
+  let episodeTitle = '';
+
+  if (activeEpisodeId && project.seriesData) {
+      for (const season of project.seriesData.seasons) {
+          const ep = season.episodes.find(e => e.id === activeEpisodeId);
+          if (ep) {
+              seasonTitle = season.title;
+              episodeTitle = ep.title;
+              break;
+          }
+      }
+  }
+
   return (
     <div className={STYLES.statusPanel.container}>
       {/* Background Decoration */}
@@ -18,11 +34,16 @@ const StatusPanel: React.FC<Props> = ({ project, progress, estimatedDuration }) 
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 relative z-10 gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] tracking-tight">
-              {project.scriptData?.title || '未命名项目'}
+          <div className="flex flex-col gap-1 mb-2">
+            <h3 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] tracking-tight flex items-baseline gap-3">
+              {project.title || '未命名项目'}
+              {seasonTitle && episodeTitle && (
+                  <span className="text-sm font-normal text-[var(--text-tertiary)] font-mono tracking-wide">
+                      {seasonTitle} {episodeTitle}
+                  </span>
+              )}
             </h3>
-            <span className="px-2 py-0.5 bg-[var(--bg-elevated)] border border-[var(--border-secondary)] text-[var(--text-tertiary)] text-[10px] rounded uppercase font-mono tracking-wider">
+            <span className="inline-block px-2 py-0.5 w-fit bg-[var(--bg-elevated)] border border-[var(--border-secondary)] text-[var(--text-tertiary)] text-[10px] rounded uppercase font-mono tracking-wider">
               Master Sequence
             </span>
           </div>

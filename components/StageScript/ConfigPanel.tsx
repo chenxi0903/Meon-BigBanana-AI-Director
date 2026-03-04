@@ -63,14 +63,14 @@ const ConfigPanel: React.FC<Props> = ({
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {/* Title */}
         <div className="space-y-2">
-          <label className={STYLES.label}>项目标题</label>
+          {/* <label className={STYLES.label}>项目标题</label>
           <input 
             type="text"
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             className={STYLES.input}
             placeholder="输入项目名称..."
-          />
+          /> */}
         </div>
 
         {/* Language */}
