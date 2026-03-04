@@ -533,7 +533,7 @@ function App() {
           />
       )}
       
-      <main className={`flex-1 h-screen overflow-hidden relative ${isSeriesManagerMode ? 'w-full' : 'ml-72'}`}>
+      <main className={`flex-1 h-screen relative ${isSeriesManagerMode ? 'w-full overflow-y-auto' : 'ml-72 overflow-hidden'}`}>
         {renderStage()}
         
         {/* Save Status Indicator */}
