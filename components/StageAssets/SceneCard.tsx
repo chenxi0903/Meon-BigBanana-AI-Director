@@ -129,6 +129,11 @@ const SceneCard: React.FC<SceneCardProps> = ({
           ) : (
             <div className="flex items-center gap-2 flex-1 min-w-0 group/location">
               <h3 className="font-bold text-[var(--text-secondary)] text-sm truncate" title={scene.location}>{scene.location}</h3>
+              {scene.source === 'reused' && (
+                <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg-elevated)] border border-[var(--border-primary)] px-1.5 py-0.5 rounded shrink-0">
+                  复用
+                </span>
+              )}
               <button
                 onClick={() => {
                   setEditLocation(scene.location);

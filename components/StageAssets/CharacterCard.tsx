@@ -139,6 +139,11 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
             ) : (
               <div className="flex items-center gap-2 mb-1 group/name">
                 <h3 className="font-bold text-[var(--text-primary)] text-base">{character.name}</h3>
+                {character.source === 'reused' && (
+                  <span className="text-[9px] text-[var(--text-tertiary)] bg-[var(--bg-elevated)] border border-[var(--border-primary)] px-1.5 py-0.5 rounded">
+                    复用
+                  </span>
+                )}
                 <button
                   onClick={() => {
                     setEditName(character.name);

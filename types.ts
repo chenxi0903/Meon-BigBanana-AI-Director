@@ -52,6 +52,7 @@ export interface Character {
   threeView?: CharacterThreeViewData; // 角色三视图设计图
   variations: CharacterVariation[]; // Added: List of alternative looks
   status?: 'pending' | 'generating' | 'completed' | 'failed'; // 生成状态，用于loading状态持久化
+  source?: 'generated' | 'reused'; // 来源标识：生成的还是复用的
 }
 
 export interface Scene {
@@ -63,6 +64,7 @@ export interface Scene {
   negativePrompt?: string; // 负面提示词，用于排除不想要的元素
   referenceImage?: string; // 场景参考图，存储为base64格式（data:image/png;base64,...）
   status?: 'pending' | 'generating' | 'completed' | 'failed'; // 生成状态，用于loading状态持久化
+  source?: 'generated' | 'reused'; // 来源标识：生成的还是复用的
 }
 
 /**

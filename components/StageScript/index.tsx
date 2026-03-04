@@ -125,7 +125,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
 
       console.log('📞 调用 parseScriptToData, 传入模型:', finalModel);
       logScriptProgress('开始解析剧本...');
-      const scriptData = await parseScriptToData(localScript, localLanguage, finalModel, finalVisualStyle);
+      const scriptData = await parseScriptToData(localScript, localLanguage, finalModel, finalVisualStyle, project.scriptData);
       
       scriptData.targetDuration = finalDuration;
       scriptData.language = localLanguage;

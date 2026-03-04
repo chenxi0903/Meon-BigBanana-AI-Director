@@ -31,7 +31,8 @@ export const parseScriptToData = async (
   rawText: string,
   language: string = '中文',
   model: string = 'gpt-5.1',
-  visualStyle: string = 'live-action'
+  visualStyle: string = 'live-action',
+  existingData?: ScriptData | null
 ): Promise<ScriptData> => {
   console.log('📝 parseScriptToData 调用 - 使用模型:', model, '视觉风格:', visualStyle);
   logScriptProgress('正在解析剧本结构...');
@@ -52,12 +53,55 @@ export const parseScriptToData = async (
     }
 
     // Enforce String IDs for consistency and init variations
-    const characters = Array.isArray(parsed.characters) ? parsed.characters.map((c: any) => ({
-      ...c,
-      id: String(c.id),
-      variations: []
-    })) : [];
-    const scenes = Array.isArray(parsed.scenes) ? parsed.scenes.map((s: any) => ({ ...s, id: String(s.id) })) : [];
+    const characters = Array.isArray(parsed.characters) ? parsed.characters.map((c: any) => {
+      // Check for existing character to reuse
+      const existingChar = existingData?.characters.find(ec => ec.name === c.name);
+      if (existingChar && existingChar.visualPrompt) {
+        console.log(`♻️ 复用已存在角色: ${c.name}`);
+        return {
+          ...c,
+          id: existingChar.id, // Reuse ID to keep consistency
+          visualPrompt: existingChar.visualPrompt,
+          negativePrompt: existingChar.negativePrompt,
+          referenceImage: existingChar.referenceImage,
+          turnaround: existingChar.turnaround,
+          threeView: existingChar.threeView,
+          variations: existingChar.variations || [],
+          source: 'reused',
+          status: existingChar.status === 'completed' ? 'completed' : 'pending'
+        };
+      }
+      return {
+        ...c,
+        id: String(c.id),
+        variations: [],
+        source: 'generated'
+      };
+    }) : [];
+
+    const scenes = Array.isArray(parsed.scenes) ? parsed.scenes.map((s: any) => {
+      // Check for existing scene to reuse
+      // Loose matching: same location is usually enough, but let's be safe
+      const existingScene = existingData?.scenes.find(es => 
+          es.location === s.location && 
+          (!s.time || es.time === s.time)
+      );
+      
+      if (existingScene && existingScene.visualPrompt) {
+        console.log(`♻️ 复用已存在场景: ${s.location}`);
+        return {
+          ...s,
+          id: existingScene.id, // Reuse ID
+          visualPrompt: existingScene.visualPrompt,
+          negativePrompt: existingScene.negativePrompt,
+          referenceImage: existingScene.referenceImage,
+          source: 'reused',
+          status: existingScene.status === 'completed' ? 'completed' : 'pending'
+        };
+      }
+      return { ...s, id: String(s.id), source: 'generated' };
+    }) : [];
+
     const storyParagraphs = Array.isArray(parsed.storyParagraphs) ? parsed.storyParagraphs.map((p: any) => ({ ...p, sceneRefId: String(p.sceneRefId) })) : [];
 
     const genre = parsed.genre || "通用";
@@ -67,40 +111,50 @@ export const parseScriptToData = async (
     logScriptProgress(`正在生成角色与场景的视觉提示词（风格：${visualStyle}）...`);
 
     let artDirection: ArtDirection | undefined;
-    try {
-      artDirection = await generateArtDirection(
-        parsed.title || '未命名剧本',
-        genre,
-        parsed.logline || '',
-        characters.map((c: any) => ({ name: c.name, gender: c.gender, age: c.age, personality: c.personality })),
-        scenes.map((s: any) => ({ location: s.location, time: s.time, atmosphere: s.atmosphere })),
-        visualStyle,
-        language,
-        model
-      );
-      console.log("✅ 全局美术指导文档生成完成，风格关键词:", artDirection.moodKeywords.join(', '));
-    } catch (e) {
-      console.error("⚠️ 全局美术指导文档生成失败，将使用默认风格:", e);
+    if (existingData?.artDirection) {
+        console.log("♻️ 复用全局美术指导文档");
+        artDirection = existingData.artDirection;
+    } else {
+        try {
+          artDirection = await generateArtDirection(
+            parsed.title || '未命名剧本',
+            genre,
+            parsed.logline || '',
+            characters.map((c: any) => ({ name: c.name, gender: c.gender, age: c.age, personality: c.personality })),
+            scenes.map((s: any) => ({ location: s.location, time: s.time, atmosphere: s.atmosphere })),
+            visualStyle,
+            language,
+            model
+          );
+          console.log("✅ 全局美术指导文档生成完成，风格关键词:", artDirection.moodKeywords.join(', '));
+        } catch (e) {
+          console.error("⚠️ 全局美术指导文档生成失败，将使用默认风格:", e);
+        }
     }
 
     // ========== Phase 2: 批量生成角色视觉提示词 ==========
-    if (characters.length > 0 && artDirection) {
+    const charactersToGenerate = characters.filter((c: any) => !c.visualPrompt);
+    
+    if (charactersToGenerate.length > 0 && artDirection) {
       try {
         await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        logScriptProgress(`正在批量生成 ${charactersToGenerate.length} 个角色的视觉提示词（风格统一模式）...`);
 
         const batchResults = await generateAllCharacterPrompts(
-          characters, artDirection, genre, visualStyle, language, model
+          charactersToGenerate, artDirection, genre, visualStyle, language, model
         );
 
-        for (let i = 0; i < characters.length; i++) {
+        for (let i = 0; i < charactersToGenerate.length; i++) {
+          const char = charactersToGenerate[i];
           if (batchResults[i] && batchResults[i].visualPrompt) {
-            characters[i].visualPrompt = batchResults[i].visualPrompt;
-            characters[i].negativePrompt = batchResults[i].negativePrompt;
+            char.visualPrompt = batchResults[i].visualPrompt;
+            char.negativePrompt = batchResults[i].negativePrompt;
           }
         }
 
         // Fallback: individually generate failed characters
-        const failedCharacters = characters.filter((c: any) => !c.visualPrompt);
+        const failedCharacters = charactersToGenerate.filter((c: any) => !c.visualPrompt);
         if (failedCharacters.length > 0) {
           console.log(`⚠️ ${failedCharacters.length} 个角色需要单独重新生成提示词`);
           logScriptProgress(`${failedCharacters.length} 个角色需要单独重新生成...`);
@@ -119,36 +173,40 @@ export const parseScriptToData = async (
         }
       } catch (e) {
         console.error("批量角色提示词生成失败，回退到逐个生成模式:", e);
-        for (let i = 0; i < characters.length; i++) {
+        for (let i = 0; i < charactersToGenerate.length; i++) {
           try {
             if (i > 0) await new Promise(resolve => setTimeout(resolve, 1500));
-            console.log(`  生成角色提示词: ${characters[i].name}`);
-            logScriptProgress(`生成角色视觉提示词：${characters[i].name}`);
-            const prompts = await generateVisualPrompts('character', characters[i], genre, model, visualStyle, language, artDirection);
-            characters[i].visualPrompt = prompts.visualPrompt;
-            characters[i].negativePrompt = prompts.negativePrompt;
+            console.log(`  生成角色提示词: ${charactersToGenerate[i].name}`);
+            logScriptProgress(`生成角色视觉提示词：${charactersToGenerate[i].name}`);
+            const prompts = await generateVisualPrompts('character', charactersToGenerate[i], genre, model, visualStyle, language, artDirection);
+            charactersToGenerate[i].visualPrompt = prompts.visualPrompt;
+            charactersToGenerate[i].negativePrompt = prompts.negativePrompt;
           } catch (e2) {
-            console.error(`Failed to generate visual prompt for character ${characters[i].name}:`, e2);
+            console.error(`Failed to generate visual prompt for character ${charactersToGenerate[i].name}:`, e2);
           }
         }
       }
-    } else if (characters.length > 0) {
-      for (let i = 0; i < characters.length; i++) {
+    } else if (charactersToGenerate.length > 0) {
+      for (let i = 0; i < charactersToGenerate.length; i++) {
         try {
           if (i > 0) await new Promise(resolve => setTimeout(resolve, 1500));
-          console.log(`  生成角色提示词: ${characters[i].name}`);
-          logScriptProgress(`生成角色视觉提示词：${characters[i].name}`);
-          const prompts = await generateVisualPrompts('character', characters[i], genre, model, visualStyle, language);
-          characters[i].visualPrompt = prompts.visualPrompt;
-          characters[i].negativePrompt = prompts.negativePrompt;
+          console.log(`  生成角色提示词: ${charactersToGenerate[i].name}`);
+          logScriptProgress(`生成角色视觉提示词：${charactersToGenerate[i].name}`);
+          const prompts = await generateVisualPrompts('character', charactersToGenerate[i], genre, model, visualStyle, language);
+          charactersToGenerate[i].visualPrompt = prompts.visualPrompt;
+          charactersToGenerate[i].negativePrompt = prompts.negativePrompt;
         } catch (e) {
-          console.error(`Failed to generate visual prompt for character ${characters[i].name}:`, e);
+          console.error(`Failed to generate visual prompt for character ${charactersToGenerate[i].name}:`, e);
         }
       }
     }
 
     // ========== Phase 3: 生成场景视觉提示词 ==========
     for (let i = 0; i < scenes.length; i++) {
+      if (scenes[i].visualPrompt) {
+          console.log(`  跳过已生成场景: ${scenes[i].location}`);
+          continue;
+      }
       try {
         if (i > 0 || characters.length > 0) await new Promise(resolve => setTimeout(resolve, 1500));
         console.log(`  生成场景提示词: ${scenes[i].location}`);
