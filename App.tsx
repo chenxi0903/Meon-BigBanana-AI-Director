@@ -411,6 +411,60 @@ function App() {
     }
   };
 
+  const handleUpgradeProject = () => {
+    if (!project) return;
+    
+    showAlert('是否将现有项目迁移到新版大项目管理功能？', {
+        title: '功能升级',
+        type: 'info',
+        showCancel: true,
+        confirmText: '升级到多剧集模式',
+        cancelText: '取消',
+        onConfirm: () => {
+            // Migrate to Series
+            const episode1: Episode = {
+                id: Date.now().toString(),
+                title: '第1集',
+                createdAt: project.createdAt,
+                lastModified: project.lastModified,
+                stage: project.stage,
+                scriptData: project.scriptData,
+                shots: project.shots,
+                renderLogs: project.renderLogs || [],
+                rawScript: project.rawScript,
+                status: 'scripting'
+            };
+            
+            const season1: Season = {
+                id: (Date.now() + 1).toString(),
+                title: '第一季',
+                episodes: [episode1],
+                createdAt: Date.now()
+            };
+
+            const sharedAssets = {
+                characters: project.scriptData?.characters || [],
+                scenes: project.scriptData?.scenes || [],
+                props: project.scriptData?.props || []
+            };
+
+            const newProj: ProjectState = {
+                ...project,
+                type: 'series',
+                seriesData: {
+                    seasons: [season1],
+                    sharedAssets: sharedAssets
+                },
+                activeEpisodeId: episode1.id // Stay in current episode context
+            };
+            
+            setProject(newProj);
+            saveProjectToDB(newProj);
+            showAlert('项目已成功升级到多剧集模式！', { type: 'success' });
+        }
+    });
+  };
+
   const renderStage = () => {
     if (!project) return null;
     
@@ -530,6 +584,7 @@ function App() {
             onShowOnboarding={handleShowOnboarding}
             onShowModelConfig={() => setShowModelConfig(true)}
             isNavigationLocked={isGenerating}
+            onUpgradeProject={project.type !== 'series' ? handleUpgradeProject : undefined}
           />
       )}
       

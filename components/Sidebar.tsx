@@ -14,9 +14,10 @@ interface SidebarProps {
   onShowOnboarding?: () => void;
   onShowModelConfig?: () => void;
   isNavigationLocked?: boolean;
+  onUpgradeProject?: () => void; // New prop for upgrade action
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, projectName, seasonName, episodeName, onShowOnboarding, onShowModelConfig, isNavigationLocked }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, projectName, seasonName, episodeName, onShowOnboarding, onShowModelConfig, isNavigationLocked, onUpgradeProject }) => {
   const { theme, toggleTheme } = useTheme();
   const navItems = [
     { id: 'script', label: '剧本与故事', icon: FileText, sub: 'Phase 01' },
@@ -26,6 +27,30 @@ const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, proje
     { id: 'prompts', label: '提示词管理', icon: ListTree, sub: 'Advanced' },
   ];
 
+  const handleUpgradeProject = () => {
+    if (onExit) {
+      // Trigger the upgrade flow by "opening" the current project again
+      // The parent component (App.tsx) handles the migration check in handleOpenProject
+      // But here we need a way to trigger that. 
+      // Since Sidebar doesn't have direct access to handleOpenProject, we can simulate it 
+      // or we might need to add a specific prop for upgrade.
+      // Alternatively, we can just use onExit to go back to dashboard and let user re-open it.
+      // But for a better UX, we should probably add an onUpgrade prop.
+      // For now, let's assume the user needs to go back to dashboard to upgrade.
+      // Wait, the requirement says "Upgrade your project to the new workbench".
+      // Let's add a specific prop for this action.
+    }
+  };
+
+  // Check if project is in legacy mode (single project type or undefined type)
+  // We can infer this if seasonName and episodeName are undefined, but that's not 100% accurate.
+  // Ideally, we should pass 'isLegacyProject' prop.
+  // For this task, I'll add the button unconditionally if it's a legacy project context,
+  // but since I don't have isLegacyProject prop, I'll assume if season/episode are missing it MIGHT be legacy,
+  // OR we can just add the button and let the parent handle visibility.
+  // The user request says "In the project location that has not been upgraded to the new classification".
+  // This implies we should show it when the project is NOT a series.
+  
   return (
     <aside className="w-72 bg-[var(--bg-base)] border-r border-[var(--border-primary)] h-screen fixed left-0 top-0 flex flex-col z-50 select-none">
       {/* Header */}
@@ -61,11 +86,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, proje
       <div className="px-6 py-4 border-b border-[var(--border-subtle)]">
          <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-1">当前项目</div>
          <div className="text-sm font-medium text-[var(--text-secondary)] truncate font-mono mb-1">{projectName || '未命名项目'}</div>
-         {(seasonName || episodeName) && (
+         {(seasonName || episodeName) ? (
             <div className="flex items-center gap-2 text-[10px] text-[var(--text-tertiary)] font-mono">
                {seasonName && <span className="bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">{seasonName}</span>}
                {episodeName && <span className="bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">{episodeName}</span>}
             </div>
+         ) : (
+            onUpgradeProject && (
+              <button 
+                onClick={onUpgradeProject}
+                className="mt-2 text-[10px] text-[#FF9422] hover:text-[#FF9422]/80 font-bold uppercase tracking-widest flex items-center gap-1.5 transition-colors group/upgrade"
+              >
+                升级至新版工作台
+                <ChevronLeft className="w-3 h-3 rotate-180 group-hover/upgrade:translate-x-0.5 transition-transform" />
+              </button>
+            )
          )}
       </div>
 
