@@ -1,4 +1,4 @@
-import { AssetLibraryItem, EpisodeState, ProjectState } from '../types';
+import { AssetLibraryItem, ProjectState } from '../types';
 
 const DB_NAME = 'MeonDB';
 const DB_VERSION = 2;
@@ -390,11 +390,21 @@ export const convertImageToBase64 = (file: File): Promise<string> => {
 // Initial template for new projects
 export const createNewProjectState = (): ProjectState => {
   const id = 'proj_' + Date.now().toString(36);
+  const createdAt = Date.now();
+  
+  // Default Season 1
+  const season1 = {
+      id: (Date.now() + 1).toString(),
+      title: '第一季',
+      episodes: [], 
+      createdAt: createdAt
+  };
+
   return {
     id,
     title: '未命名项目',
-    createdAt: Date.now(),
-    lastModified: Date.now(),
+    createdAt: createdAt,
+    lastModified: createdAt,
     stage: 'script',
     targetDuration: '60s', // Default duration now 60s
     language: '中文', // Default language
@@ -413,82 +423,14 @@ export const createNewProjectState = (): ProjectState => {
     shots: [],
     isParsingScript: false,
     renderLogs: [], // Initialize empty render logs array
-  };
-};
-
-const createNewEpisodeState = (episodeTitle: string): EpisodeState => {
-  const id = 'ep_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-  return {
-    id,
-    title: episodeTitle,
-    createdAt: Date.now(),
-    lastModified: Date.now(),
-    stage: 'script',
-    targetDuration: '60s',
-    language: '中文',
-    visualStyle: 'live-action',
-    shotGenerationModel: 'gpt-5.1',
-    rawScript: '',
-    scriptData: null,
-    shots: [],
-    isParsingScript: false,
-    renderLogs: [],
-    usedCharacterIds: [],
-    usedSceneIds: [],
-    usedPropIds: [],
-  };
-};
-
-export const createNewProjectStateV2 = (): ProjectState => {
-  const id = 'proj_' + Date.now().toString(36);
-  return {
-    id,
-    title: '未命名项目',
-    createdAt: Date.now(),
-    lastModified: Date.now(),
-    stage: 'series',
-    formatVersion: 'v2',
-    migrationPreference: 'migrated',
-    sharedLibrary: { characters: [], scenes: [], props: [] },
-    series: {
-      seasons: [],
-      episodes: {},
-      activeEpisodeId: undefined,
-      expandedSeasonIds: [],
+    
+    // Series Config (Default to Series Mode)
+    type: 'series',
+    seriesData: {
+        seasons: [season1],
+        sharedAssets: { characters: [], scenes: [], props: [] }
     },
-    targetDuration: '60s',
-    language: '中文',
-    visualStyle: 'live-action',
-    shotGenerationModel: 'gpt-5.1',
-    rawScript: '',
-    scriptData: null,
-    shots: [],
-    isParsingScript: false,
-    renderLogs: [],
-  };
-};
-
-export const createFirstEpisodeForSeason = (project: ProjectState, seasonId: string, seasonTitle?: string): ProjectState => {
-  const episode = createNewEpisodeState('第1集');
-  const season = {
-    id: seasonId,
-    title: seasonTitle || '第一季',
-    createdAt: Date.now(),
-    episodeIds: [episode.id],
-  };
-  return {
-    ...project,
-    stage: 'series',
-    formatVersion: 'v2',
-    migrationPreference: project.migrationPreference || 'migrated',
-    sharedLibrary: project.sharedLibrary || { characters: [], scenes: [], props: [] },
-    series: {
-      seasons: [season],
-      episodes: { [episode.id]: episode },
-      activeEpisodeId: episode.id,
-      expandedSeasonIds: [season.id],
-    },
-    lastModified: Date.now(),
+    activeEpisodeId: undefined // Start at Manager
   };
 };
 

@@ -214,50 +214,38 @@ export interface RenderLog {
   duration?: number; // Time taken in milliseconds
 }
 
-export type WorkflowStage = 'script' | 'assets' | 'director' | 'export' | 'prompts';
-export type ProjectStage = 'series' | WorkflowStage;
-
-export type ProjectFormatVersion = 'v1' | 'v2';
-export type ProjectMigrationPreference = 'ask' | 'stay_legacy' | 'migrated';
-
-export interface SharedLibrary {
-  characters: Character[];
-  scenes: Scene[];
-  props: Prop[];
-}
-
-export interface SeriesSeason {
-  id: string;
-  title: string;
-  createdAt: number;
-  episodeIds: string[];
-}
-
-export interface EpisodeState {
+export interface Episode {
   id: string;
   title: string;
   createdAt: number;
   lastModified: number;
-  stage: WorkflowStage;
-  rawScript: string;
-  targetDuration: string;
-  language: string;
-  visualStyle: string;
-  shotGenerationModel: string;
+  stage: 'script' | 'assets' | 'director' | 'export' | 'prompts';
+  
+  // Episode specific content
+  rawScript: string; // Added rawScript
   scriptData: ScriptData | null;
   shots: Shot[];
-  isParsingScript: boolean;
   renderLogs: RenderLog[];
-  usedCharacterIds?: string[];
-  usedSceneIds?: string[];
-  usedPropIds?: string[];
+  
+  // Status tracking
+  status: 'scripting' | 'production' | 'completed';
 }
 
-export interface SeriesState {
-  seasons: SeriesSeason[];
-  episodes: Record<string, EpisodeState>;
-  activeEpisodeId?: string;
-  expandedSeasonIds?: string[];
+export interface Season {
+  id: string;
+  title: string;
+  episodes: Episode[];
+  createdAt: number;
+}
+
+export interface SeriesData {
+  seasons: Season[];
+  // Shared assets are stored here and synced to active episode
+  sharedAssets: {
+    characters: Character[];
+    scenes: Scene[];
+    props: Prop[];
+  };
 }
 
 export interface ProjectState {
@@ -265,12 +253,13 @@ export interface ProjectState {
   title: string;
   createdAt: number;
   lastModified: number;
-  stage: ProjectStage;
-  formatVersion?: ProjectFormatVersion;
-  migrationPreference?: ProjectMigrationPreference;
-  series?: SeriesState;
-  sharedLibrary?: SharedLibrary;
+  stage: 'script' | 'assets' | 'director' | 'export' | 'prompts';
   
+  // Series Management
+  type?: 'single' | 'series';
+  seriesData?: SeriesData;
+  activeEpisodeId?: string; // ID of the currently loaded episode in series mode
+
   // Script Phase Data
   rawScript: string;
   targetDuration: string;

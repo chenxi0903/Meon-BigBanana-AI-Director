@@ -5,12 +5,12 @@ import StageAssets from './components/StageAssets';
 import StageDirector from './components/StageDirector';
 import StageExport from './components/StageExport';
 import StagePrompts from './components/StagePrompts';
-import StageSeries from './components/StageSeries';
 import Dashboard from './components/Dashboard';
+import SeriesManager from './components/SeriesManager';
 import Onboarding, { shouldShowOnboarding, resetOnboarding } from './components/Onboarding';
 import ModelConfigModal from './components/ModelConfig';
 import LoginPage from './components/Auth/LoginPage';
-import { ProjectStage, ProjectState, WorkflowStage } from './types';
+import { ProjectState, Season, Episode } from './types';
 import { Save, CheckCircle, X, Loader2 } from 'lucide-react';
 import { saveProjectToDB } from './services/storageService';
 import { setLogCallback, clearLogCallback } from './services/renderLogService';
@@ -35,7 +35,6 @@ function App() {
   // Ref to hold debounce timer
   const saveTimeoutRef = useRef<any>(null);
   const hideStatusTimeoutRef = useRef<any>(null);
-  const migrationPromptedProjectIdRef = useRef<string | null>(null);
 
   // Detect mobile device on mount
   useEffect(() => {
@@ -121,27 +120,10 @@ function App() {
       setLogCallback((log) => {
         setProject(prev => {
           if (!prev) return null;
-          if (prev.formatVersion === 'v2' && prev.series?.activeEpisodeId) {
-            const episodeId = prev.series.activeEpisodeId;
-            const episode = prev.series.episodes[episodeId];
-            if (!episode) return prev;
-            return {
-              ...prev,
-              series: {
-                ...prev.series,
-                episodes: {
-                  ...prev.series.episodes,
-                  [episodeId]: {
-                    ...episode,
-                    renderLogs: [...(episode.renderLogs || []), log],
-                    lastModified: Date.now(),
-                  },
-                },
-              },
-              lastModified: Date.now(),
-            };
-          }
-          return { ...prev, renderLogs: [...(prev.renderLogs || []), log], lastModified: Date.now() };
+          return {
+            ...prev,
+            renderLogs: [...(prev.renderLogs || []), log]
+          };
         });
       });
     } else {
@@ -196,15 +178,61 @@ function App() {
     if (!project) return;
     setProject(prev => {
       if (!prev) return null;
-      // 支持函数式更新
-      if (typeof updates === 'function') {
-        return updates(prev);
+      
+      // Calculate new state
+      const newState = typeof updates === 'function' ? updates(prev) : { ...prev, ...updates };
+
+      // SYNC LOGIC: If in Series Mode and inside an Episode, sync changes back to the specific episode slot
+      if (newState.type === 'series' && newState.activeEpisodeId && newState.seriesData) {
+          const seasons = newState.seriesData.seasons.map(season => {
+              const episodeIndex = season.episodes.findIndex(e => e.id === newState.activeEpisodeId);
+              if (episodeIndex !== -1) {
+                  const updatedEpisode: Episode = {
+                      ...season.episodes[episodeIndex],
+                      scriptData: newState.scriptData,
+                      shots: newState.shots,
+                      stage: newState.stage,
+                      renderLogs: newState.renderLogs,
+                      rawScript: newState.rawScript,
+                      lastModified: Date.now()
+                  };
+                  return {
+                      ...season,
+                      episodes: [
+                          ...season.episodes.slice(0, episodeIndex),
+                          updatedEpisode,
+                          ...season.episodes.slice(episodeIndex + 1)
+                      ]
+                  };
+              }
+              return season;
+          });
+          
+          // Sync Shared Assets
+          let newSharedAssets = newState.seriesData.sharedAssets;
+          if (newState.scriptData) {
+               newSharedAssets = {
+                  characters: newState.scriptData.characters,
+                  scenes: newState.scriptData.scenes,
+                  props: newState.scriptData.props
+               };
+          }
+
+          return {
+              ...newState,
+              seriesData: {
+                  ...newState.seriesData,
+                  seasons: seasons,
+                  sharedAssets: newSharedAssets
+              }
+          };
       }
-      return { ...prev, ...updates };
+      
+      return newState;
     });
   };
 
-  const setStage = (stage: ProjectStage) => {
+  const setStage = (stage: 'script' | 'assets' | 'director' | 'export' | 'prompts') => {
     if (isGenerating) {
       showAlert('当前正在执行生成任务（剧本分镜 / 首帧 / 视频等），切换页面会导致生成数据丢失，且已扣除的费用无法恢复。\n\n确定要离开当前页面吗？', {
         title: '生成任务进行中',
@@ -214,126 +242,119 @@ function App() {
         cancelText: '继续等待',
         onConfirm: () => {
           setIsGenerating(false);
-          updateProject((prev) => {
-            if (prev.formatVersion === 'v2' && prev.series?.activeEpisodeId && stage !== 'series') {
-              const episodeId = prev.series.activeEpisodeId;
-              const episode = prev.series.episodes[episodeId];
-              if (!episode) return { ...prev, stage: 'series' };
-              return {
-                ...prev,
-                stage,
-                series: {
-                  ...prev.series,
-                  episodes: {
-                    ...prev.series.episodes,
-                    [episodeId]: { ...episode, stage, lastModified: Date.now() },
-                  },
-                },
-                lastModified: Date.now(),
-              };
-            }
-            if (prev.formatVersion === 'v2' && stage !== 'series' && !prev.series?.activeEpisodeId) {
-              return { ...prev, stage: 'series', lastModified: Date.now() };
-            }
-            return { ...prev, stage, lastModified: Date.now() };
-          });
+          updateProject({ stage });
         }
       });
       return;
     }
-    updateProject((prev) => {
-      if (prev.formatVersion === 'v2' && prev.series?.activeEpisodeId && stage !== 'series') {
-        const episodeId = prev.series.activeEpisodeId;
-        const episode = prev.series.episodes[episodeId];
-        if (!episode) return { ...prev, stage: 'series' };
-        return {
-          ...prev,
-          stage,
-          series: {
-            ...prev.series,
-            episodes: { ...prev.series.episodes, [episodeId]: { ...episode, stage, lastModified: Date.now() } },
-          },
-          lastModified: Date.now(),
-        };
-      }
-      if (prev.formatVersion === 'v2' && stage !== 'series' && !prev.series?.activeEpisodeId) {
-        return { ...prev, stage: 'series', lastModified: Date.now() };
-      }
-      return { ...prev, stage, lastModified: Date.now() };
-    });
+    updateProject({ stage });
   };
 
   const handleOpenProject = (proj: ProjectState) => {
-    setProject(proj);
+    if (!proj.type) {
+        // Migration Check
+        showAlert('是否将现有项目迁移到新版大项目管理功能？', {
+            title: '功能升级',
+            type: 'info',
+            showCancel: true,
+            confirmText: '升级到多剧集模式',
+            cancelText: '保持旧版',
+            onConfirm: () => {
+                // Migrate to Series
+                const episode1: Episode = {
+                    id: Date.now().toString(),
+                    title: '第1集',
+                    createdAt: proj.createdAt,
+                    lastModified: proj.lastModified,
+                    stage: proj.stage,
+                    scriptData: proj.scriptData,
+                    shots: proj.shots,
+                    renderLogs: proj.renderLogs || [],
+                    rawScript: proj.rawScript,
+                    status: 'scripting'
+                };
+                
+                const season1: Season = {
+                    id: (Date.now() + 1).toString(),
+                    title: '第一季',
+                    episodes: [episode1],
+                    createdAt: Date.now()
+                };
+
+                const sharedAssets = {
+                    characters: proj.scriptData?.characters || [],
+                    scenes: proj.scriptData?.scenes || [],
+                    props: proj.scriptData?.props || []
+                };
+
+                const newProj: ProjectState = {
+                    ...proj,
+                    type: 'series',
+                    seriesData: {
+                        seasons: [season1],
+                        sharedAssets: sharedAssets
+                    },
+                    // activeEpisodeId is undefined, so SeriesManager will show
+                };
+                setProject(newProj);
+                saveProjectToDB(newProj);
+            },
+            onCancel: () => {
+                // Keep as Single
+                const newProj: ProjectState = { ...proj, type: 'single' };
+                setProject(newProj);
+                saveProjectToDB(newProj);
+            }
+        });
+    } else {
+        setProject(proj);
+    }
   };
 
-  useEffect(() => {
-    if (!project) return;
-    if (project.formatVersion === 'v2') return;
-    if (project.migrationPreference === 'stay_legacy' || project.migrationPreference === 'migrated') return;
-    if (migrationPromptedProjectIdRef.current === project.id) return;
-    migrationPromptedProjectIdRef.current = project.id;
+  const handleEnterEpisode = (episodeId: string) => {
+    if (!project || !project.seriesData) return;
 
-    showAlert('是否将现有项目迁移到新版大项目管理功能？\n\n迁移后会自动创建第一季与第一集，并保留你迁移前的编辑器内容。', {
-      title: '升级提示',
-      type: 'info',
-      showCancel: true,
-      confirmText: '是',
-      cancelText: '留在旧版',
-      onConfirm: () => {
-        setProject((prev) => {
-          if (!prev) return prev;
-          if (prev.formatVersion === 'v2') return prev;
-          const now = Date.now();
-          const seasonId = 'season_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-          const episodeId = 'ep_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-          const sharedLibrary = prev.scriptData
-            ? { characters: prev.scriptData.characters || [], scenes: prev.scriptData.scenes || [], props: prev.scriptData.props || [] }
-            : { characters: [], scenes: [], props: [] };
-          const episode = {
-            id: episodeId,
-            title: '第1集',
-            createdAt: now,
-            lastModified: now,
-            stage: prev.stage === 'series' ? 'script' : (prev.stage as WorkflowStage),
-            rawScript: prev.rawScript,
-            targetDuration: prev.targetDuration,
-            language: prev.language,
-            visualStyle: prev.visualStyle,
-            shotGenerationModel: prev.shotGenerationModel,
-            scriptData: prev.scriptData,
-            shots: prev.shots,
-            isParsingScript: prev.isParsingScript,
-            renderLogs: prev.renderLogs || [],
-            usedCharacterIds: sharedLibrary.characters.map((c) => c.id),
-            usedSceneIds: sharedLibrary.scenes.map((s) => s.id),
-            usedPropIds: sharedLibrary.props.map((p) => p.id),
-          };
-          return {
-            ...prev,
-            stage: 'series',
-            formatVersion: 'v2',
-            migrationPreference: 'migrated',
-            sharedLibrary,
-            series: {
-              seasons: [{ id: seasonId, title: '第一季', createdAt: now, episodeIds: [episodeId] }],
-              episodes: { [episodeId]: episode },
-              activeEpisodeId: episodeId,
-              expandedSeasonIds: [seasonId],
-            },
-            lastModified: now,
-          };
-        });
-      },
-      onCancel: () => {
-        setProject((prev) => {
-          if (!prev) return prev;
-          if (prev.formatVersion === 'v2') return prev;
-          return { ...prev, migrationPreference: 'stay_legacy', lastModified: Date.now() };
-        });
-      },
-    });
-  }, [project?.id]);
+    // Find the episode
+    let targetEpisode: Episode | undefined;
+    for (const season of project.seriesData.seasons) {
+        const ep = season.episodes.find(e => e.id === episodeId);
+        if (ep) {
+            targetEpisode = ep;
+            break;
+        }
+    }
+
+    if (targetEpisode) {
+        // Hydrate root fields with episode data + shared assets
+        const sharedAssets = project.seriesData.sharedAssets;
+        
+        // Ensure scriptData has shared assets
+        const scriptData = targetEpisode.scriptData ? {
+            ...targetEpisode.scriptData,
+            characters: sharedAssets.characters,
+            scenes: sharedAssets.scenes,
+            props: sharedAssets.props
+        } : {
+            title: targetEpisode.title,
+            genre: '',
+            logline: '',
+            characters: sharedAssets.characters,
+            scenes: sharedAssets.scenes,
+            props: sharedAssets.props,
+            storyParagraphs: []
+        };
+
+        setProject({
+             ...project,
+             activeEpisodeId: episodeId,
+             stage: targetEpisode.stage,
+             scriptData: scriptData,
+             shots: targetEpisode.shots,
+             renderLogs: targetEpisode.renderLogs,
+             rawScript: targetEpisode.rawScript
+         });
+    }
+  };
 
   const handleExitProject = async () => {
     if (isGenerating) {
@@ -348,7 +369,12 @@ function App() {
           if (project) {
             await saveProjectToDB(project);
           }
-          setProject(null);
+          
+          if (project?.type === 'series' && project.activeEpisodeId) {
+             setProject(prev => prev ? ({ ...prev, activeEpisodeId: undefined }) : null);
+          } else {
+             setProject(null);
+          }
         }
       });
       return;
@@ -357,281 +383,47 @@ function App() {
     if (project) {
         await saveProjectToDB(project);
     }
-    setProject(null);
+    
+    if (project?.type === 'series' && project.activeEpisodeId) {
+        setProject(prev => prev ? ({ ...prev, activeEpisodeId: undefined }) : null);
+    } else {
+        setProject(null);
+    }
   };
 
   const renderStage = () => {
     if (!project) return null;
-    const isV2 = project.formatVersion === 'v2' && !!project.series;
-    const activeEpisodeId = project.series?.activeEpisodeId;
-    const activeEpisode = isV2 && activeEpisodeId ? project.series?.episodes[activeEpisodeId] : undefined;
-    const sharedLibrary = project.sharedLibrary || { characters: [], scenes: [], props: [] };
-    const effectiveProject: ProjectState =
-      isV2 && project.stage !== 'series' && activeEpisode
-        ? {
-            ...project,
-            stage: activeEpisode.stage,
-            rawScript: activeEpisode.rawScript,
-            targetDuration: activeEpisode.targetDuration,
-            language: activeEpisode.language,
-            visualStyle: activeEpisode.visualStyle,
-            shotGenerationModel: activeEpisode.shotGenerationModel,
-            scriptData: activeEpisode.scriptData
-              ? {
-                  ...activeEpisode.scriptData,
-                  characters: sharedLibrary.characters,
-                  scenes: sharedLibrary.scenes,
-                  props: sharedLibrary.props,
-                }
-              : {
-                  title: activeEpisode.title,
-                  genre: '',
-                  logline: '',
-                  targetDuration: activeEpisode.targetDuration,
-                  language: activeEpisode.language,
-                  visualStyle: activeEpisode.visualStyle,
-                  shotGenerationModel: activeEpisode.shotGenerationModel,
-                  characters: sharedLibrary.characters,
-                  scenes: sharedLibrary.scenes,
-                  props: sharedLibrary.props,
-                  storyParagraphs: [],
-                },
-            shots: activeEpisode.shots,
-            isParsingScript: activeEpisode.isParsingScript,
-            renderLogs: activeEpisode.renderLogs,
-          }
-        : project;
-
-    const updateEffectiveProject = (updates: Partial<ProjectState> | ((prev: ProjectState) => ProjectState)) => {
-      if (!isV2 || project.stage === 'series' || !activeEpisodeId || !activeEpisode) {
-        updateProject(updates);
-        return;
-      }
-      updateProject((prev) => {
-        if (prev.formatVersion !== 'v2' || !prev.series) return prev;
-        const episode = prev.series.episodes[activeEpisodeId];
-        if (!episode) return { ...prev, stage: 'series', lastModified: Date.now() };
-
-        const baseEffective: ProjectState = {
-          ...prev,
-          stage: episode.stage,
-          rawScript: episode.rawScript,
-          targetDuration: episode.targetDuration,
-          language: episode.language,
-          visualStyle: episode.visualStyle,
-          shotGenerationModel: episode.shotGenerationModel,
-          scriptData: episode.scriptData
-            ? {
-                ...episode.scriptData,
-                characters: (prev.sharedLibrary || { characters: [], scenes: [], props: [] }).characters,
-                scenes: (prev.sharedLibrary || { characters: [], scenes: [], props: [] }).scenes,
-                props: (prev.sharedLibrary || { characters: [], scenes: [], props: [] }).props,
-              }
-            : {
-                title: episode.title,
-                genre: '',
-                logline: '',
-                targetDuration: episode.targetDuration,
-                language: episode.language,
-                visualStyle: episode.visualStyle,
-                shotGenerationModel: episode.shotGenerationModel,
-                characters: (prev.sharedLibrary || { characters: [], scenes: [], props: [] }).characters,
-                scenes: (prev.sharedLibrary || { characters: [], scenes: [], props: [] }).scenes,
-                props: (prev.sharedLibrary || { characters: [], scenes: [], props: [] }).props,
-                storyParagraphs: [],
-              },
-          shots: episode.shots,
-          isParsingScript: episode.isParsingScript,
-          renderLogs: episode.renderLogs,
-        };
-
-        const nextEffective =
-          typeof updates === 'function' ? updates(baseEffective) : ({ ...baseEffective, ...updates } as ProjectState);
-
-        const prevLibrary = prev.sharedLibrary || { characters: [], scenes: [], props: [] };
-        const incomingScriptData = nextEffective.scriptData;
-
-        const charIdMap: Record<string, string> = {};
-        const sceneIdMap: Record<string, string> = {};
-        const propIdMap: Record<string, string> = {};
-
-        const mergedCharacters = [...prevLibrary.characters];
-        const charIndexById = new Map(mergedCharacters.map((c, i) => [c.id, i]));
-        const charByName = new Map(mergedCharacters.map((c) => [c.name?.trim(), c] as const).filter(([k]) => !!k));
-
-        const mergedScenes = [...prevLibrary.scenes];
-        const sceneIndexById = new Map(mergedScenes.map((s, i) => [s.id, i]));
-        const sceneByKey = new Map(
-          mergedScenes
-            .map((s) => [`${s.location?.trim() || ''}__${s.time?.trim() || ''}`, s] as const)
-            .filter(([k]) => k !== '__')
+    
+    // Series Manager View
+    if (project.type === 'series' && !project.activeEpisodeId) {
+        return (
+            <SeriesManager 
+                project={project} 
+                updateProject={updateProject} 
+                onEnterEpisode={handleEnterEpisode}
+                onBackToDashboard={() => setProject(null)}
+            />
         );
-
-        const mergedProps = [...prevLibrary.props];
-        const propIndexById = new Map(mergedProps.map((p, i) => [p.id, i]));
-        const propByName = new Map(mergedProps.map((p) => [p.name?.trim(), p] as const).filter(([k]) => !!k));
-
-        if (incomingScriptData) {
-          for (const c of incomingScriptData.characters || []) {
-            const existingIndex = charIndexById.get(c.id);
-            if (existingIndex !== undefined) {
-              mergedCharacters[existingIndex] = c;
-              charIdMap[c.id] = c.id;
-              continue;
-            }
-            const key = c.name?.trim();
-            const byName = key ? charByName.get(key) : undefined;
-            if (byName) {
-              charIdMap[c.id] = byName.id;
-              continue;
-            }
-            mergedCharacters.push(c);
-            charIndexById.set(c.id, mergedCharacters.length - 1);
-            if (key) charByName.set(key, c);
-            charIdMap[c.id] = c.id;
-          }
-
-          for (const s of incomingScriptData.scenes || []) {
-            const existingIndex = sceneIndexById.get(s.id);
-            if (existingIndex !== undefined) {
-              mergedScenes[existingIndex] = s;
-              sceneIdMap[s.id] = s.id;
-              continue;
-            }
-            const key = `${s.location?.trim() || ''}__${s.time?.trim() || ''}`;
-            const byKey = key !== '__' ? sceneByKey.get(key) : undefined;
-            if (byKey) {
-              sceneIdMap[s.id] = byKey.id;
-              continue;
-            }
-            mergedScenes.push(s);
-            sceneIndexById.set(s.id, mergedScenes.length - 1);
-            if (key !== '__') sceneByKey.set(key, s);
-            sceneIdMap[s.id] = s.id;
-          }
-
-          for (const p of incomingScriptData.props || []) {
-            const existingIndex = propIndexById.get(p.id);
-            if (existingIndex !== undefined) {
-              mergedProps[existingIndex] = p;
-              propIdMap[p.id] = p.id;
-              continue;
-            }
-            const key = p.name?.trim();
-            const byName = key ? propByName.get(key) : undefined;
-            if (byName) {
-              propIdMap[p.id] = byName.id;
-              continue;
-            }
-            mergedProps.push(p);
-            propIndexById.set(p.id, mergedProps.length - 1);
-            if (key) propByName.set(key, p);
-            propIdMap[p.id] = p.id;
-          }
-        }
-
-        const nextSharedLibrary = { characters: mergedCharacters, scenes: mergedScenes, props: mergedProps };
-        const nextEpisodeScriptData = incomingScriptData
-          ? {
-              ...incomingScriptData,
-              characters: mergedCharacters,
-              scenes: mergedScenes,
-              props: mergedProps,
-              storyParagraphs: (incomingScriptData.storyParagraphs || []).map((p) => ({
-                ...p,
-                sceneRefId: sceneIdMap[p.sceneRefId] || p.sceneRefId,
-              })),
-            }
-          : episode.scriptData;
-
-        const nextShots = (nextEffective.shots || []).map((shot) => {
-          const nextSceneId = sceneIdMap[shot.sceneId] || shot.sceneId;
-          const nextCharacters = Array.from(
-            new Set((shot.characters || []).map((id) => charIdMap[id] || id).filter(Boolean))
-          );
-          const nextProps = shot.props ? Array.from(new Set(shot.props.map((id) => propIdMap[id] || id).filter(Boolean))) : undefined;
-          const nextVariations = shot.characterVariations
-            ? Object.fromEntries(
-                Object.entries(shot.characterVariations).map(([k, v]) => [charIdMap[k] || k, v] as const)
-              )
-            : undefined;
-          return {
-            ...shot,
-            sceneId: nextSceneId,
-            characters: nextCharacters,
-            props: nextProps,
-            characterVariations: nextVariations,
-          };
-        });
-
-        return {
-          ...prev,
-          title: nextEffective.title,
-          stage: nextEffective.stage,
-          sharedLibrary: nextSharedLibrary,
-          series: {
-            ...prev.series,
-            episodes: {
-              ...prev.series.episodes,
-              [activeEpisodeId]: {
-                ...episode,
-                stage: nextEffective.stage as WorkflowStage,
-                rawScript: nextEffective.rawScript,
-                targetDuration: nextEffective.targetDuration,
-                language: nextEffective.language,
-                visualStyle: nextEffective.visualStyle,
-                shotGenerationModel: nextEffective.shotGenerationModel,
-                scriptData: nextEpisodeScriptData,
-                shots: nextShots,
-                isParsingScript: nextEffective.isParsingScript,
-                renderLogs: nextEffective.renderLogs,
-                lastModified: Date.now(),
-              },
-            },
-          },
-          lastModified: Date.now(),
-        };
-      });
-    };
+    }
 
     switch (project.stage) {
-      case 'series':
-        return (
-          <StageSeries
-            project={project}
-            updateProject={updateProject}
-            onOpenEpisode={(episodeId) => {
-              setProject((prev) => {
-                if (!prev || !prev.series) return prev;
-                const ep = prev.series.episodes[episodeId];
-                if (!ep) return prev;
-                return {
-                  ...prev,
-                  stage: ep.stage as WorkflowStage,
-                  series: { ...prev.series, activeEpisodeId: episodeId },
-                  lastModified: Date.now(),
-                };
-              });
-            }}
-          />
-        );
       case 'script':
         return (
           <StageScript
-            project={effectiveProject}
-            updateProject={updateEffectiveProject}
+            project={project}
+            updateProject={updateProject}
             onShowModelConfig={handleShowModelConfig}
             onGeneratingChange={setIsGenerating}
           />
         );
       case 'assets':
-        return <StageAssets project={effectiveProject} updateProject={updateEffectiveProject} onGeneratingChange={setIsGenerating} />;
+        return <StageAssets project={project} updateProject={updateProject} onGeneratingChange={setIsGenerating} />;
       case 'director':
-        return <StageDirector project={effectiveProject} updateProject={updateEffectiveProject} onGeneratingChange={setIsGenerating} />;
+        return <StageDirector project={project} updateProject={updateProject} onGeneratingChange={setIsGenerating} />;
       case 'export':
-        return <StageExport project={effectiveProject} />;
+        return <StageExport project={project} />;
       case 'prompts':
-        return <StagePrompts project={effectiveProject} updateProject={updateEffectiveProject} />;
+        return <StagePrompts project={project} updateProject={updateProject} />;
       default:
         return <div className="text-[var(--text-primary)]">未知阶段</div>;
     }
@@ -713,7 +505,6 @@ function App() {
         onShowOnboarding={handleShowOnboarding}
         onShowModelConfig={() => setShowModelConfig(true)}
         isNavigationLocked={isGenerating}
-        showSeries={project.formatVersion === 'v2'}
       />
       
       <main className="ml-72 flex-1 h-screen overflow-hidden relative">

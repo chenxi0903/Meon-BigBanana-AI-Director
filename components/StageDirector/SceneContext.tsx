@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { MapPin, User, Clock, X, Shirt, Edit2, Package } from 'lucide-react';
 import { Shot, Character, Scene, Prop } from '../../types';
 
@@ -33,12 +33,6 @@ const SceneContext: React.FC<SceneContextProps> = ({
   onAddProp,
   onRemoveProp
 }) => {
-  const recommendedCharacters = useMemo(() => {
-    const text = `${shot.actionSummary || ''}\n${shot.dialogue || ''}`.trim();
-    if (!text) return [];
-    return availableCharacters.filter((c) => c.name && c.name.length >= 2 && text.includes(c.name));
-  }, [availableCharacters, shot.actionSummary, shot.dialogue]);
-
   return (
     <div className="bg-[var(--bg-surface)] p-5 rounded-xl border border-[var(--border-primary)] mb-6 space-y-4">
       <div className="flex items-center gap-2 mb-2">
@@ -150,23 +144,6 @@ const SceneContext: React.FC<SceneContextProps> = ({
               );
             })}
             
-            {recommendedCharacters.length > 0 && (
-              <div className="pt-1">
-                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-mono mb-2">推荐添加</div>
-                <div className="flex flex-wrap gap-2">
-                  {recommendedCharacters.map((char) => (
-                    <button
-                      key={char.id}
-                      onClick={() => onAddCharacter(char.id)}
-                      className="px-2 py-1 rounded-md bg-[var(--accent-bg)] text-[var(--accent-text)] text-[10px] font-medium hover:opacity-90 transition-opacity"
-                    >
-                      + {char.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Add Character Selector */}
             {availableCharacters.length > 0 && (
               <div className="flex items-center gap-2 pt-1">
