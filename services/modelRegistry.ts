@@ -139,10 +139,10 @@ const triggerCloudSync = () => {
  * 获取默认状态
  */
 const getDefaultState = (): ModelRegistryState => ({
-  providers: [...BUILTIN_PROVIDERS],
-  models: [...ALL_BUILTIN_MODELS],
-  activeModels: { ...DEFAULT_ACTIVE_MODELS },
-});
+    providers: [...BUILTIN_PROVIDERS],
+    models: [...ALL_BUILTIN_MODELS],
+    activeModels: { ...DEFAULT_ACTIVE_MODELS },
+  });
 
 /**
  * 从 localStorage 加载状态

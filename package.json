@@ -11,6 +11,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.97.0",
+    "@volcengine/openapi": "^1.36.0",
     "claude": "^0.1.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.554.0",
@@ -22,5 +23,9 @@
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "overrides": {
+    "axios": "^1.13.6",
+    "rollup": "^4.59.0"
   }
 }
