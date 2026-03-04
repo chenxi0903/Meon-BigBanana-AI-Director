@@ -284,6 +284,53 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   };
 
   /**
+   * 同步角色形象（从资产库/主角色同步）
+   */
+  const handleSyncCharacter = async (charId: string) => {
+    if (!project.scriptData) return;
+    
+    const char = project.scriptData.characters.find(c => compareIds(c.id, charId));
+    if (!char || char.source !== 'reused') return;
+
+    try {
+      // 尝试从资产库查找同名角色（作为由于是"复用"而来，通常应该在库中有记录）
+      // 或者查找该角色的"原型"
+      const allItems = await getAllAssetLibraryItems();
+      
+      // 优先匹配当前项目的角色库
+      // 如果没有找到，尝试匹配同名角色
+      const match = allItems.find(item => 
+        item.type === 'character' && 
+        item.name === char.name && 
+        (item.data as Character).referenceImage
+      );
+
+      if (match) {
+        const sourceChar = match.data as Character;
+        
+        updateProject((prev) => {
+          if (!prev.scriptData) return prev;
+          const newData = { ...prev.scriptData };
+          const target = newData.characters.find(c => compareIds(c.id, charId));
+          if (target) {
+            target.referenceImage = sourceChar.referenceImage;
+            target.visualPrompt = sourceChar.visualPrompt; // 同步提示词
+            // 也可以同步其他属性，但用户主要关注形象
+          }
+          return { ...prev, scriptData: newData };
+        });
+        
+        showAlert('已同步主角色形象', { type: 'success' });
+      } else {
+        showAlert('在资产库中未找到该角色的原始版本，无法同步', { type: 'warning' });
+      }
+    } catch (e: any) {
+      console.error('同步角色失败', e);
+      showAlert('同步失败', { type: 'error' });
+    }
+  };
+
+  /**
    * 生成资源（角色或场景）
    */
   const handleGenerateAsset = async (type: 'character' | 'scene', id: string, signal?: AbortSignal) => {
@@ -1655,6 +1702,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 onAddToLibrary={() => handleAddCharacterToLibrary(char)}
                 onReplaceFromLibrary={() => openLibrary('character', char.id)}
                 onRegeneratePrompt={() => handleRegenerateCharacterPrompt(char.id)}
+                onSync={() => handleSyncCharacter(char.id)}
               />
             ))}
           </div>

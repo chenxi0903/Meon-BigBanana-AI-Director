@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Check, Shirt, Trash2, Edit2, AlertCircle, FolderPlus, Grid3x3, LayoutGrid, Loader2 } from 'lucide-react';
+import { User, Check, Shirt, Trash2, Edit2, AlertCircle, FolderPlus, Grid3x3, LayoutGrid, Loader2, RefreshCw } from 'lucide-react';
 import { Character } from '../../types';
 import PromptEditor from './PromptEditor';
 import ImageUploadButton from './ImageUploadButton';
@@ -21,6 +21,7 @@ interface CharacterCardProps {
   onAddToLibrary: () => void;
   onReplaceFromLibrary: () => void;
   onRegeneratePrompt?: () => void;
+  onSync?: () => void;
 }
 
 const CharacterCard: React.FC<CharacterCardProps> = ({
@@ -40,6 +41,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
   onAddToLibrary,
   onReplaceFromLibrary,
   onRegeneratePrompt,
+  onSync,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingGender, setIsEditingGender] = useState(false);
@@ -267,6 +269,18 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
                   uploadLabel="上传"
                 />
               </div>
+            )}
+
+            {character.source === 'reused' && onSync && (
+              <button
+                onClick={onSync}
+                disabled={isGenerating}
+                className="w-full py-1.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--accent)] hover:text-[var(--accent-hover)] rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border border-[var(--border-primary)] hover:border-[var(--accent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="同步主角色形象"
+              >
+                <RefreshCw className="w-3 h-3" />
+                同步形象
+              </button>
             )}
 
             <button
