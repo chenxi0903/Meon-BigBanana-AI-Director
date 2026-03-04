@@ -208,14 +208,39 @@ function App() {
               return season;
           });
           
-          // Sync Shared Assets
-          let newSharedAssets = newState.seriesData.sharedAssets;
+          // Sync Shared Assets (Additive Only - Ensure independence)
+          let newSharedAssets = { ...newState.seriesData.sharedAssets };
           if (newState.scriptData) {
-               newSharedAssets = {
-                  characters: newState.scriptData.characters,
-                  scenes: newState.scriptData.scenes,
-                  props: newState.scriptData.props
-               };
+               // Characters: Add new ones, don't overwrite existing
+               const currentChars = newState.scriptData.characters || [];
+               const sharedChars = [...(newSharedAssets.characters || [])];
+               currentChars.forEach(c => {
+                   // Check by ID first, then Name
+                   if (!sharedChars.some(sc => sc.id === c.id || sc.name === c.name)) {
+                       sharedChars.push(c);
+                   }
+               });
+               newSharedAssets.characters = sharedChars;
+
+               // Scenes: Add new ones
+               const currentScenes = newState.scriptData.scenes || [];
+               const sharedScenes = [...(newSharedAssets.scenes || [])];
+               currentScenes.forEach(s => {
+                   if (!sharedScenes.some(ss => ss.id === s.id || (ss.location === s.location && ss.time === s.time))) {
+                       sharedScenes.push(s);
+                   }
+               });
+               newSharedAssets.scenes = sharedScenes;
+               
+               // Props: Add new ones
+               const currentProps = newState.scriptData.props || [];
+               const sharedProps = [...(newSharedAssets.props || [])];
+               currentProps.forEach(p => {
+                   if (!sharedProps.some(sp => sp.id === p.id || sp.name === p.name)) {
+                       sharedProps.push(p);
+                   }
+               });
+               newSharedAssets.props = sharedProps;
           }
 
           return {
@@ -325,22 +350,17 @@ function App() {
     }
 
     if (targetEpisode) {
-        // Hydrate root fields with episode data + shared assets
-        const sharedAssets = project.seriesData.sharedAssets;
+        // Hydrate root fields with episode data
+        // NOTE: We do NOT automatically merge sharedAssets here to ensure episode independence.
+        // Shared assets are only pulled in during script parsing or explicit import.
         
-        // Ensure scriptData has shared assets
-        const scriptData = targetEpisode.scriptData ? {
-            ...targetEpisode.scriptData,
-            characters: sharedAssets.characters,
-            scenes: sharedAssets.scenes,
-            props: sharedAssets.props
-        } : {
+        const scriptData = targetEpisode.scriptData || {
             title: targetEpisode.title,
             genre: '',
             logline: '',
-            characters: sharedAssets.characters,
-            scenes: sharedAssets.scenes,
-            props: sharedAssets.props,
+            characters: [], 
+            scenes: [],
+            props: [],
             storyParagraphs: []
         };
 

@@ -32,7 +32,8 @@ export const parseScriptToData = async (
   language: string = '中文',
   model: string = 'gpt-5.1',
   visualStyle: string = 'live-action',
-  existingData?: ScriptData | null
+  existingData?: ScriptData | null,
+  sharedAssets?: { characters: any[], scenes: any[], props: any[] }
 ): Promise<ScriptData> => {
   console.log('📝 parseScriptToData 调用 - 使用模型:', model, '视觉风格:', visualStyle);
   logScriptProgress('正在解析剧本结构...');
@@ -54,8 +55,17 @@ export const parseScriptToData = async (
 
     // Enforce String IDs for consistency and init variations
     const characters = Array.isArray(parsed.characters) ? parsed.characters.map((c: any) => {
-      // Check for existing character to reuse
-      const existingChar = existingData?.characters.find(ec => ec.name === c.name);
+      // Check for existing character to reuse (Local first, then Shared)
+      let existingChar = existingData?.characters.find(ec => ec.name === c.name);
+      
+      if (!existingChar && sharedAssets) {
+          const sharedChar = sharedAssets.characters.find(sc => sc.name === c.name);
+          if (sharedChar) {
+              console.log(`📚 从共享库复用角色: ${c.name}`);
+              existingChar = sharedChar;
+          }
+      }
+
       if (existingChar && existingChar.visualPrompt) {
         console.log(`♻️ 复用已存在角色: ${c.name}`);
         return {
@@ -82,10 +92,21 @@ export const parseScriptToData = async (
     const scenes = Array.isArray(parsed.scenes) ? parsed.scenes.map((s: any) => {
       // Check for existing scene to reuse
       // Loose matching: same location is usually enough, but let's be safe
-      const existingScene = existingData?.scenes.find(es => 
+      let existingScene = existingData?.scenes.find(es => 
           es.location === s.location && 
           (!s.time || es.time === s.time)
       );
+
+      if (!existingScene && sharedAssets) {
+          const sharedScene = sharedAssets.scenes.find(ss => 
+              ss.location === s.location && 
+              (!s.time || ss.time === s.time)
+          );
+          if (sharedScene) {
+              console.log(`📚 从共享库复用场景: ${s.location}`);
+              existingScene = sharedScene;
+          }
+      }
       
       if (existingScene && existingScene.visualPrompt) {
         console.log(`♻️ 复用已存在场景: ${s.location}`);
