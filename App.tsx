@@ -421,7 +421,7 @@ function App() {
                 project={project} 
                 updateProject={updateProject} 
                 onEnterEpisode={handleEnterEpisode}
-                onBackToDashboard={() => setProject(null)}
+                onBackToDashboard={handleExitProject}
             />
         );
     }
@@ -515,21 +515,25 @@ function App() {
   }
 
   // Workspace View
+  const isSeriesManagerMode = project.type === 'series' && !project.activeEpisodeId;
+
   return (
     <div className="flex h-screen bg-[var(--bg-secondary)] font-sans text-[var(--text-secondary)] selection:bg-[var(--accent-bg)]">
-      <Sidebar 
-        currentStage={project.stage} 
-        setStage={setStage} 
-        onExit={handleExitProject} 
-        projectName={project.title}
-        seasonName={project.seriesData?.seasons.find(s => s.episodes.some(e => e.id === project.activeEpisodeId))?.title}
-        episodeName={project.seriesData?.seasons.flatMap(s => s.episodes).find(e => e.id === project.activeEpisodeId)?.title}
-        onShowOnboarding={handleShowOnboarding}
-        onShowModelConfig={() => setShowModelConfig(true)}
-        isNavigationLocked={isGenerating}
-      />
+      {!isSeriesManagerMode && (
+          <Sidebar 
+            currentStage={project.stage} 
+            setStage={setStage} 
+            onExit={handleExitProject} 
+            projectName={project.title}
+            seasonName={project.seriesData?.seasons.find(s => s.episodes.some(e => e.id === project.activeEpisodeId))?.title}
+            episodeName={project.seriesData?.seasons.flatMap(s => s.episodes).find(e => e.id === project.activeEpisodeId)?.title}
+            onShowOnboarding={handleShowOnboarding}
+            onShowModelConfig={() => setShowModelConfig(true)}
+            isNavigationLocked={isGenerating}
+          />
+      )}
       
-      <main className="ml-72 flex-1 h-screen overflow-hidden relative">
+      <main className={`flex-1 h-screen overflow-hidden relative ${isSeriesManagerMode ? 'w-full' : 'ml-72'}`}>
         {renderStage()}
         
         {/* Save Status Indicator */}
