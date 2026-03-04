@@ -178,9 +178,19 @@ const generateVideoAsync = async (
   console.log(`✅ ${resolvedModelName} 视频生成完成，视频ID:`, videoId);
 
   if (videoUrlFromStatus) {
-    const videoBase64 = await convertVideoUrlToBase64(videoUrlFromStatus);
-    console.log(`✅ ${resolvedModelName} 视频已转换为base64格式`);
-    return videoBase64;
+    try {
+      const videoBase64 = await convertVideoUrlToBase64(videoUrlFromStatus);
+      console.log(`✅ ${resolvedModelName} 视频已转换为base64格式`);
+      return videoBase64;
+    } catch (e: any) {
+      if (videoId) {
+        console.warn(`⚠️ 直链视频转 base64 失败，尝试使用 /content 下载:`, e?.message || e);
+      } else {
+        throw new Error(
+          `视频下载失败: ${e?.message || '未知错误'}。该视频链接可能禁止跨域访问或需要鉴权，请使用支持 CORS 的返回格式或通过同源代理下载。`
+        );
+      }
+    }
   }
 
   // Step 3: 下载视频内容
@@ -415,8 +425,9 @@ export const generateVideo = async (
       console.log('✅ 视频已转换为base64格式,可安全存储到IndexedDB');
       return videoBase64;
     } catch (error: any) {
-      console.error('❌ 视频转base64失败,返回原始URL:', error);
-      return videoUrl;
+      throw new Error(
+        `视频下载失败: ${error?.message || '未知错误'}。该视频链接可能禁止跨域访问或需要鉴权，无法在浏览器内转换为 base64；请更换支持 CORS 的视频源或使用同源代理/反代服务。`
+      );
     }
   } catch (error: any) {
     clearTimeout(timeoutId);

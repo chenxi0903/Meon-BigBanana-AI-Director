@@ -57,6 +57,32 @@ const base64ToBlob = (base64: string, mimeType: string = 'image/png'): Blob => {
   return new Blob([byteArray], { type: actualMime });
 };
 
+const normalizeVideoBase64DataUrl = (value: string): string => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) {
+    throw new Error('视频 base64 数据为空');
+  }
+  if (trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  return `data:video/mp4;base64,${trimmed}`;
+};
+
+const extractVideoBase64FromResponse = (response: any): string | null => {
+  const item = Array.isArray(response?.data) ? response.data[0] : null;
+  const candidate =
+    item?.b64_json ||
+    item?.b64Json ||
+    response?.b64_json ||
+    response?.b64Json ||
+    response?.data?.b64_json ||
+    response?.data?.b64Json;
+  if (typeof candidate === 'string' && candidate.trim()) {
+    return normalizeVideoBase64DataUrl(candidate);
+  }
+  return null;
+};
+
 /**
  * 下载视频 URL 并转为 base64
  */
@@ -120,6 +146,7 @@ export const callJimengVideoApi = async (
   const resolution = activeModel.params.resolution || '1080p';
   const hasStartImage = !!options.startImage;
   const hasEndImage = !!options.endImage;
+  const responseFormat = 'b64_json';
 
   console.log(`🎬 即梦视频生成请求: model=${apiModel}, ratio=${ratio}, duration=${duration}s, resolution=${resolution}`);
   console.log(`   输入: ${hasStartImage ? '首帧图' : '无图'}${hasEndImage ? ' + 尾帧图' : ''}`);
@@ -139,6 +166,7 @@ export const callJimengVideoApi = async (
       formData.append('ratio', ratio);
       formData.append('duration', String(duration));
       formData.append('resolution', resolution);
+      formData.append('response_format', responseFormat);
 
       // 添加首帧图
       if (options.startImage) {
@@ -184,7 +212,7 @@ export const callJimengVideoApi = async (
         ratio,
         duration,
         resolution,
-        response_format: 'url',
+        response_format: responseFormat,
       };
 
       response = await retryOperation(async () => {
@@ -217,23 +245,41 @@ export const callJimengVideoApi = async (
     clearTimeout(timeoutId);
 
     // 解析返回结果
+    const videoBase64FromResponse = extractVideoBase64FromResponse(response);
+    if (videoBase64FromResponse) {
+      console.log('✅ 即梦视频生成成功，已获取 base64');
+      return videoBase64FromResponse;
+    }
+
     // 即梦返回格式: { created, data: [{ url }] }
     const data = response.data;
     if (data && data.length > 0 && data[0].url) {
       const videoUrl = data[0].url;
       console.log('✅ 即梦视频生成成功，正在下载视频...');
-      const videoBase64 = await downloadVideoAsBase64(videoUrl);
-      console.log('✅ 即梦视频已转换为 base64');
-      return videoBase64;
+      try {
+        const videoBase64 = await downloadVideoAsBase64(videoUrl);
+        console.log('✅ 即梦视频已转换为 base64');
+        return videoBase64;
+      } catch (e: any) {
+        throw new Error(
+          `视频下载失败: ${e?.message || '未知错误'}。该视频链接可能禁止跨域访问或需要鉴权；建议让反代服务返回 response_format=b64_json（当前已请求）或提供同源下载接口。`
+        );
+      }
     }
 
     // 兼容其他返回格式（如直接返回 video_url）
     const videoUrl = response.video_url || response.videoUrl || response.url;
     if (videoUrl) {
       console.log('✅ 即梦视频生成成功（备用格式），正在下载视频...');
-      const videoBase64 = await downloadVideoAsBase64(videoUrl);
-      console.log('✅ 即梦视频已转换为 base64');
-      return videoBase64;
+      try {
+        const videoBase64 = await downloadVideoAsBase64(videoUrl);
+        console.log('✅ 即梦视频已转换为 base64');
+        return videoBase64;
+      } catch (e: any) {
+        throw new Error(
+          `视频下载失败: ${e?.message || '未知错误'}。该视频链接可能禁止跨域访问或需要鉴权；建议让反代服务返回 response_format=b64_json（当前已请求）或提供同源下载接口。`
+        );
+      }
     }
 
     throw new Error('即梦视频生成失败：未返回视频数据');

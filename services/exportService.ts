@@ -6,21 +6,30 @@ import { ProjectState } from '../types';
  */
 async function downloadFile(urlOrBase64: string): Promise<Blob> {
   // 检查是否为base64格式
-  if (urlOrBase64.startsWith('data:video/')) {
+  if (urlOrBase64.startsWith('data:')) {
     // 从base64 data URL中提取数据
-    const base64Data = urlOrBase64.split(',')[1];
+    const parts = urlOrBase64.split(',');
+    const header = parts[0] || '';
+    const base64Data = parts[1] || '';
     const binaryString = atob(base64Data);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
-    return new Blob([bytes], { type: 'video/mp4' });
+    const mimeMatch = header.match(/^data:([^;]+);base64$/);
+    const mimeType = mimeMatch?.[1] || 'application/octet-stream';
+    return new Blob([bytes], { type: mimeType });
   }
   
   // 原有的URL下载逻辑
-  const response = await fetch(urlOrBase64);
+  let response: Response;
+  try {
+    response = await fetch(urlOrBase64);
+  } catch (e: any) {
+    throw new Error(`下载失败: ${e?.message || '网络错误'}（可能是跨域/CORS 或链接需要鉴权）`);
+  }
   if (!response.ok) {
-    throw new Error(`下载失败: ${response.statusText}`);
+    throw new Error(`下载失败: HTTP ${response.status} ${response.statusText}`);
   }
   return await response.blob();
 }
@@ -49,6 +58,7 @@ export async function downloadMasterVideo(
     onProgress?.('下载视频片段...', 10);
 
     // 3. 下载所有视频文件并添加到 ZIP
+    const failures: { fileName: string; message: string }[] = [];
     for (let i = 0; i < completedShots.length; i++) {
       const shot = completedShots[i];
       const videoUrl = shot.interval!.videoUrl!;
@@ -63,8 +73,18 @@ export async function downloadMasterVideo(
         onProgress?.(`下载中 (${i + 1}/${completedShots.length})...`, progress);
       } catch (err) {
         console.error(`下载视频片段 ${i + 1} 失败:`, err);
-        // 继续下载其他文件，不中断整个流程
+        failures.push({
+          fileName,
+          message: err instanceof Error ? err.message : '未知错误'
+        });
       }
+    }
+
+    if (failures.length > 0) {
+      const head = failures.slice(0, 3).map(f => `${f.fileName}(${f.message})`).join('；');
+      throw new Error(
+        `有 ${failures.length} 个视频片段下载失败（常见原因：跨域/CORS 或链接需要鉴权）。例如：${head}`
+      );
     }
 
     onProgress?.('正在生成 ZIP 文件...', 85);
