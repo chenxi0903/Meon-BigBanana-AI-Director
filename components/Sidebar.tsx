@@ -1,21 +1,24 @@
 import React from 'react';
-import { FileText, Users, Clapperboard, Film, ChevronLeft, ListTree, HelpCircle, Cpu, Sun, Moon, Loader2 } from 'lucide-react';
+import { FileText, Users, Clapperboard, Film, ChevronLeft, ListTree, HelpCircle, Cpu, Sun, Moon, Loader2, FolderKanban } from 'lucide-react';
 import logoImg from '../meon_logo.svg';
 import { useTheme } from '../contexts/ThemeContext';
+import { ProjectStage } from '../types';
 
 interface SidebarProps {
   currentStage: string;
-  setStage: (stage: 'script' | 'assets' | 'director' | 'export' | 'prompts') => void;
+  setStage: (stage: ProjectStage) => void;
   onExit: () => void;
   projectName?: string;
   onShowOnboarding?: () => void;
   onShowModelConfig?: () => void;
   isNavigationLocked?: boolean;
+  showSeries?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, projectName, onShowOnboarding, onShowModelConfig, isNavigationLocked }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, projectName, onShowOnboarding, onShowModelConfig, isNavigationLocked, showSeries }) => {
   const { theme, toggleTheme } = useTheme();
   const navItems = [
+    ...(showSeries ? [{ id: 'series', label: '大项目管理', icon: FolderKanban, sub: 'Project' }] : []),
     { id: 'script', label: '剧本与故事', icon: FileText, sub: 'Phase 01' },
     { id: 'assets', label: '角色与场景', icon: Users, sub: 'Phase 02' },
     { id: 'director', label: '导演工作台', icon: Clapperboard, sub: 'Phase 03' },
@@ -81,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, proje
           return (
             <button
               key={item.id}
-              onClick={() => setStage(item.id as any)}
+              onClick={() => setStage(item.id as ProjectStage)}
               className={`w-full flex items-center justify-between px-6 py-4 transition-all duration-200 group relative border-l-2 ${
                 isActive 
                   ? 'border-[var(--text-primary)] bg-[var(--nav-active-bg)] text-[var(--text-primary)]'
