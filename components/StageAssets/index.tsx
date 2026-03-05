@@ -25,6 +25,7 @@ import { applyLibraryItemToProject, createLibraryItemFromCharacter, createLibrar
 import { AspectRatioSelector } from '../AspectRatioSelector';
 import { getUserAspectRatio, setUserAspectRatio, getActiveImageModel, getImageModels, isModelAvailable } from '../../services/modelRegistry';
 import { getActiveChatModelName } from '../../services/ai/apiCore';
+import { checkPromptsConnection } from '../promptUtils';
 
 interface Props {
   project: ProjectState;
@@ -287,6 +288,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
    * 生成资源（角色或场景）
    */
   const handleGenerateAsset = async (type: 'character' | 'scene', id: string, signal?: AbortSignal) => {
+    if (!await checkPromptsConnection()) return;
+
     // 设置生成状态
     if (project.scriptData) {
       const newData = { ...project.scriptData };
@@ -628,6 +631,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
    * 重新生成角色提示词
    */
   const handleRegenerateCharacterPrompt = async (charId: string) => {
+    if (!await checkPromptsConnection()) return;
+
     if (!project.scriptData) return;
     const char = project.scriptData.characters.find(c => compareIds(c.id, charId));
     if (!char) return;
@@ -1130,6 +1135,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
    * 生成角色九宫格造型的视角描述（Step 1）
    */
   const handleGenerateTurnaroundPanels = async (charId: string) => {
+    if (!await checkPromptsConnection()) return;
+
     const char = project.scriptData?.characters.find(c => compareIds(c.id, charId));
     if (!char) return;
 
@@ -1195,6 +1202,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
    * 确认视角描述并生成九宫格图片（Step 2）
    */
   const handleConfirmTurnaroundPanels = async (charId: string, panels: CharacterTurnaroundPanel[]) => {
+    if (!await checkPromptsConnection()) return;
+
     const char = project.scriptData?.characters.find(c => compareIds(c.id, charId));
     if (!char) return;
 

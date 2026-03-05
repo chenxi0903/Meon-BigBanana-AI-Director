@@ -3,6 +3,7 @@ import { ProjectState, Shot } from '../../types';
 import { useAlert } from '../GlobalAlert';
 import { parseScriptToData, generateShotList, continueScript, continueScriptStream, rewriteScript, rewriteScriptStream, setScriptLogCallback, clearScriptLogCallback, logScriptProgress } from '../../services/aiService';
 import { getRegistryState } from '../../services/modelRegistry';
+import { checkPromptsConnection } from '../promptUtils';
 import { getFinalValue, validateConfig } from './utils';
 import { DEFAULTS } from './constants';
 import ConfigPanel from './ConfigPanel';
@@ -84,7 +85,11 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     return () => clearScriptLogCallback();
   }, []);
 
+
+
   const handleAnalyze = async () => {
+    if (!await checkPromptsConnection()) return;
+
     const finalDuration = getFinalValue(localDuration, customDurationInput);
     const finalModel = getFinalValue(localModel, customModelInput);
     const finalVisualStyle = getFinalValue(localVisualStyle, customStyleInput);
@@ -192,6 +197,8 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
   };
 
   const handleContinueScript = async () => {
+    if (!await checkPromptsConnection()) return;
+
     const finalModel = getFinalValue(localModel, customModelInput);
     
     if (!localScript.trim()) {
@@ -244,6 +251,8 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
   };
 
   const handleRewriteScript = async () => {
+    if (!await checkPromptsConnection()) return;
+
     const finalModel = getFinalValue(localModel, customModelInput);
     
     if (!localScript.trim()) {

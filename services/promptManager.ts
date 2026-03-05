@@ -115,41 +115,60 @@ export const getAllSystemPrompts = async (): Promise<Record<string, string>> => 
 
   if (error) {
     console.error('Error fetching system prompts:', error);
-    return {};
+    throw error; // Throw error to allow caller to handle connection failures
   }
 
   // Convert array to map: { promptId: content }
-  // Note: if multiple defaults exist (different versions), the last one wins
-  // Ideally, we should order by version DESC and filter unique names
   return (data || []).reduce((acc, item) => {
     acc[item.name] = item.content;
     return acc;
   }, {} as Record<string, string>);
 };
 
-// Global in-memory cache for prompt overrides
-let globalPromptCache: Record<string, string> = {};
+// Global in-memory cache
+let userPromptCache: Record<string, string> = {};
+let systemPromptCache: Record<string, string> = {};
+let isOfflineMode = false;
 
 // Initialize/Update cache with user prompts
 export const initializePromptCache = async (userId: string) => {
   const userPrompts = await getUserPrompts(userId);
-  globalPromptCache = userPrompts;
+  userPromptCache = userPrompts;
+};
+
+// Load system prompts from server
+export const loadSystemPrompts = async () => {
+  try {
+    const sysPrompts = await getAllSystemPrompts();
+    systemPromptCache = sysPrompts;
+    isOfflineMode = false;
+    return true;
+  } catch (error) {
+    console.error("Failed to load system prompts:", error);
+    throw error;
+  }
+};
+
+export const setOfflineMode = (offline: boolean) => {
+  isOfflineMode = offline;
 };
 
 export const setPromptOverrideCache = (promptId: string, content: string) => {
-  globalPromptCache = { ...globalPromptCache, [promptId]: content };
+  userPromptCache = { ...userPromptCache, [promptId]: content };
 };
 
 export const clearPromptOverrideCache = (promptId: string) => {
-  if (!globalPromptCache[promptId]) return;
-  const next = { ...globalPromptCache };
+  if (!userPromptCache[promptId]) return;
+  const next = { ...userPromptCache };
   delete next[promptId];
-  globalPromptCache = next;
+  userPromptCache = next;
 };
 
 // Clear cache
 export const clearPromptCache = () => {
-  globalPromptCache = {};
+  userPromptCache = {};
+  systemPromptCache = {};
+  isOfflineMode = false;
 };
 
 // Get effective prompt (User Override > System Default > Hardcoded Fallback)
@@ -158,11 +177,15 @@ export const getEffectivePrompt = (
   fallbackContent: string
 ): string => {
   // 1. Check user override in cache
-  if (globalPromptCache[promptId]) {
-    return globalPromptCache[promptId];
+  if (userPromptCache[promptId]) {
+    return userPromptCache[promptId];
   }
   
-  // 2. Return fallback (System defaults should be synced to code or handled otherwise, 
-  // but for now we rely on the caller providing the hardcoded fallback)
+  // 2. Check system default (if not offline)
+  if (!isOfflineMode && systemPromptCache[promptId]) {
+    return systemPromptCache[promptId];
+  }
+  
+  // 3. Return fallback
   return fallbackContent;
 };

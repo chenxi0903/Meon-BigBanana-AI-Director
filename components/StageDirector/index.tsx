@@ -29,6 +29,7 @@ import NineGridPreview from './NineGridPreview';
 import { useAlert } from '../GlobalAlert';
 import { AspectRatioSelector } from '../AspectRatioSelector';
 import { getUserAspectRatio, setUserAspectRatio, getModelById } from '../../services/modelRegistry';
+import { checkPromptsConnection } from '../promptUtils';
 
 interface Props {
   project: ProjectState;
@@ -178,6 +179,8 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
    * 生成关键帧
    */
   const handleGenerateKeyframe = async (shot: Shot, type: 'start' | 'end') => {
+    if (!await checkPromptsConnection()) return;
+
     const existingKf = shot.keyframes?.find(k => k.type === type);
     const kfId = existingKf?.id || generateId(`kf-${shot.id}-${type}`);
     
@@ -557,6 +560,8 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
    * AI优化关键帧提示词（单个）
    */
   const handleOptimizeKeyframeWithAI = async (type: 'start' | 'end') => {
+    if (!await checkPromptsConnection()) return;
+
     if (!activeShot) return;
     
     const scene = project.scriptData?.scenes.find(s => String(s.id) === String(activeShot.sceneId));
@@ -620,6 +625,8 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
    * AI一次性优化起始帧和结束帧（推荐）
    */
   const handleOptimizeBothKeyframes = async () => {
+    if (!await checkPromptsConnection()) return;
+
     if (!activeShot) return;
     
     const scene = project.scriptData?.scenes.find(s => String(s.id) === String(activeShot.sceneId));
@@ -709,6 +716,8 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
 
   /** 执行AI拆分镜头的实际逻辑 */
   const executeSplitShot = async (shot: Shot) => {
+    if (!await checkPromptsConnection()) return;
+
     // 1. 获取场景信息
     const scene = project.scriptData?.scenes.find(s => String(s.id) === String(shot.sceneId));
     if (!scene) {
@@ -773,6 +782,8 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
    * 使用 AI 将镜头拆分为 9 个不同视角的文字描述，等待用户确认/编辑后再生成图片
    */
   const handleGenerateNineGrid = async (shot: Shot) => {
+    if (!await checkPromptsConnection()) return;
+
     if (!shot) return;
     
     // 1. 获取场景信息
