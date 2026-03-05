@@ -129,24 +129,48 @@ export const getAllSystemPrompts = async (): Promise<Record<string, string>> => 
 let userPromptCache: Record<string, string> = {};
 let systemPromptCache: Record<string, string> = {};
 let isOfflineMode = false;
+let lastSystemPromptFetchAt = 0;
+let systemPromptRefreshTimer: ReturnType<typeof setInterval> | null = null;
+const SYSTEM_PROMPT_REFRESH_MS = 40 * 60 * 1000;
+
+const refreshSystemPrompts = async (options?: { force?: boolean; throwOnError?: boolean }) => {
+  const now = Date.now();
+  const shouldRefresh = options?.force || now - lastSystemPromptFetchAt >= SYSTEM_PROMPT_REFRESH_MS;
+  if (!shouldRefresh) return false;
+  try {
+    const sysPrompts = await getAllSystemPrompts();
+    systemPromptCache = sysPrompts;
+    isOfflineMode = false;
+    lastSystemPromptFetchAt = Date.now();
+    return true;
+  } catch (error) {
+    console.error("Failed to load system prompts:", error);
+    if (options?.throwOnError) {
+      throw error;
+    }
+    return false;
+  }
+};
+
+const startSystemPromptAutoRefresh = () => {
+  if (systemPromptRefreshTimer) return;
+  systemPromptRefreshTimer = setInterval(() => {
+    refreshSystemPrompts();
+  }, SYSTEM_PROMPT_REFRESH_MS);
+};
 
 // Initialize/Update cache with user prompts
 export const initializePromptCache = async (userId: string) => {
   const userPrompts = await getUserPrompts(userId);
   userPromptCache = userPrompts;
+  await refreshSystemPrompts({ force: true });
+  startSystemPromptAutoRefresh();
 };
 
 // Load system prompts from server
 export const loadSystemPrompts = async () => {
-  try {
-    const sysPrompts = await getAllSystemPrompts();
-    systemPromptCache = sysPrompts;
-    isOfflineMode = false;
-    return true;
-  } catch (error) {
-    console.error("Failed to load system prompts:", error);
-    throw error;
-  }
+  await refreshSystemPrompts({ force: true, throwOnError: true });
+  return true;
 };
 
 export const setOfflineMode = (offline: boolean) => {
@@ -169,6 +193,11 @@ export const clearPromptCache = () => {
   userPromptCache = {};
   systemPromptCache = {};
   isOfflineMode = false;
+  lastSystemPromptFetchAt = 0;
+  if (systemPromptRefreshTimer) {
+    clearInterval(systemPromptRefreshTimer);
+    systemPromptRefreshTimer = null;
+  }
 };
 
 // Get effective prompt (User Override > System Default > Hardcoded Fallback)

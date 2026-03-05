@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAlert } from '../GlobalAlert';
-import { getUserPrompts, saveUserPrompt, resetUserPrompt, getSystemPrompt, getAllSystemPrompts, setPromptOverrideCache, clearPromptOverrideCache } from '../../services/promptManager';
+import { getUserPrompts, saveUserPrompt, resetUserPrompt, getSystemPrompt, getAllSystemPrompts, loadSystemPrompts, setPromptOverrideCache, clearPromptOverrideCache } from '../../services/promptManager';
 
 // 根据提供的真实业务结构重建的数据 
 const PROMPT_CATEGORIES = [ 
@@ -200,6 +200,7 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
   const handleSyncSystem = async () => {
     setIsSyncing(true);
     try {
+      await loadSystemPrompts();
       const prompts = await getAllSystemPrompts();
       cachedSystemPrompts = prompts; // Update cache
       setSystemDefaults(prev => ({ ...prev, ...prompts }));
