@@ -43,6 +43,7 @@ export interface ChatModelParams {
   topP?: number;                 // Top P，可选
   frequencyPenalty?: number;     // 频率惩罚，可选
   presencePenalty?: number;      // 存在惩罚，可选
+  reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 /**
@@ -437,7 +438,7 @@ export const BUILTIN_CHAT_MODELS: ChatModelDefinition[] = [
     description: 'Doubao Seed 2.0 Pro，专业版模型，适合复杂任务',
     isBuiltIn: true,
     isEnabled: false,
-    params: { ...DEFAULT_CHAT_PARAMS },
+    params: { ...DEFAULT_CHAT_PARAMS, reasoningEffort: 'medium' },
   },
   {
     id: 'doubao-seed-1-6-flash-250828',
@@ -449,7 +450,7 @@ export const BUILTIN_CHAT_MODELS: ChatModelDefinition[] = [
     description: 'Doubao Seed 1.6 Flash，快速响应模型',
     isBuiltIn: true,
     isEnabled: false,
-    params: { ...DEFAULT_CHAT_PARAMS },
+    params: { ...DEFAULT_CHAT_PARAMS, reasoningEffort: 'medium' },
   },
   {
     id: 'doubao-seed-1-6-lite-251015',
@@ -461,7 +462,7 @@ export const BUILTIN_CHAT_MODELS: ChatModelDefinition[] = [
     description: 'Doubao Seed 1.6 Lite，轻量级模型，高性价比',
     isBuiltIn: true,
     isEnabled: false,
-    params: { ...DEFAULT_CHAT_PARAMS },
+    params: { ...DEFAULT_CHAT_PARAMS, reasoningEffort: 'medium' },
   },
   {
     id: 'doubao-seed-2-0-lite-260215',
@@ -473,7 +474,7 @@ export const BUILTIN_CHAT_MODELS: ChatModelDefinition[] = [
     description: 'Doubao Seed 2.0 Lite，新一代轻量级模型',
     isBuiltIn: true,
     isEnabled: false,
-    params: { ...DEFAULT_CHAT_PARAMS },
+    params: { ...DEFAULT_CHAT_PARAMS, reasoningEffort: 'medium' },
   },
   {
     id: 'doubao-seed-2-0-mini-260215',
@@ -485,7 +486,7 @@ export const BUILTIN_CHAT_MODELS: ChatModelDefinition[] = [
     description: 'Doubao Seed 2.0 Mini，迷你版模型，极致速度',
     isBuiltIn: true,
     isEnabled: false,
-    params: { ...DEFAULT_CHAT_PARAMS },
+    params: { ...DEFAULT_CHAT_PARAMS, reasoningEffort: 'medium' },
   },
 ];
 

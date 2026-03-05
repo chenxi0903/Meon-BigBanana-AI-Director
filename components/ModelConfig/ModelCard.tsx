@@ -81,6 +81,20 @@ const ModelCard: React.FC<ModelCardProps> = ({
         />
         <p className="text-[9px] text-[var(--text-muted)] mt-1">留空则不限制最大 Token</p>
       </div>
+      {model.providerId === 'volcengine' && (
+        <div>
+          <label className="text-[10px] text-[var(--text-tertiary)] block mb-1">思考程度</label>
+          <select
+            value={editParams.reasoningEffort ?? 'medium'}
+            onChange={(e) => handleParamChange('reasoningEffort', e.target.value)}
+            className="w-full bg-[var(--bg-hover)] border border-[var(--border-secondary)] rounded px-3 py-2 text-xs text-[var(--text-primary)]"
+          >
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+          </select>
+        </div>
+      )}
     </div>
   );
 

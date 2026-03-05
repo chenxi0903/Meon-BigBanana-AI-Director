@@ -253,6 +253,9 @@ export const chatCompletion = async (
     messages: [{ role: 'user', content: prompt }],
     temperature: temperature
   };
+  if (resolved?.providerId === 'volcengine' && resolved?.params?.reasoningEffort) {
+    requestBody.reasoning_effort = resolved.params.reasoningEffort;
+  }
 
   if (responseFormat === 'json_object') {
     requestBody.response_format = { type: 'json_object' };
@@ -353,6 +356,9 @@ export const chatCompletionStream = async (
     temperature: temperature,
     stream: true
   };
+  if (resolved?.providerId === 'volcengine' && resolved?.params?.reasoningEffort) {
+    requestBody.reasoning_effort = resolved.params.reasoningEffort;
+  }
 
   if (responseFormat === 'json_object') {
     requestBody.response_format = { type: 'json_object' };

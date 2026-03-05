@@ -128,6 +128,9 @@ export const callChatApi = async (
   if (params.presencePenalty !== undefined) {
     requestBody.presence_penalty = params.presencePenalty;
   }
+  if (activeModel.providerId === 'volcengine' && params.reasoningEffort) {
+    requestBody.reasoning_effort = params.reasoningEffort;
+  }
   
   // JSON 格式响应
   if (options.responseFormat === 'json') {
