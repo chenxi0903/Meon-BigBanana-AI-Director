@@ -147,6 +147,10 @@ export interface Shot {
   characters: string[]; // Character IDs
   characterVariations?: { [characterId: string]: string }; // Added: Map char ID to variation ID for this shot
   props?: string[]; // 道具ID数组，引用 ScriptData.props 中的道具
+  aiImagePrompt?: string; // AI 图像生成提示词
+  aiVideoPrompt?: string; // AI 视频生成提示词
+  audioEffects?: string; // 关键音效或BGM提示
+  notes?: string; // 导演备注
   keyframes: Keyframe[];
   interval?: VideoInterval;
   videoModel?: 'veo' | 'sora-2' | 'veo_3_1-fast' | 'veo_3_1-fast-4K' | 'veo_3_1_t2v_fast_landscape' | 'veo_3_1_t2v_fast_portrait' | 'veo_3_1_i2v_s_fast_fl_landscape' | 'veo_3_1_i2v_s_fast_fl_portrait'; // Video generation model selection

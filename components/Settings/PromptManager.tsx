@@ -324,6 +324,23 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
                     {category.items.map((item) => { 
                       const isActive = selectedId === item.id; 
                       const isCustomized = !!userPrompts[item.id];
+                      const isUnused = item.id === 'buildShotSplitPrompt';
+                      if (isUnused) {
+                        return (
+                          <div 
+                            key={item.id}
+                            className="relative w-full text-left px-6 py-2 flex flex-col opacity-60"
+                          > 
+                            <span className="text-[13px] mb-0.5 truncate w-full flex items-center justify-between text-gray-500 dark:text-gray-500"> 
+                              {item.title} 
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">目前未使用</span>
+                            </span> 
+                            <span className="text-[10px] font-mono truncate w-full text-gray-400 dark:text-gray-600"> 
+                              {item.id} 
+                            </span> 
+                          </div>
+                        );
+                      }
                       return ( 
                         <button 
                           key={item.id} 
@@ -334,7 +351,6 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
                               : 'hover:bg-gray-50 dark:hover:bg-gray-800/50' 
                           }`} 
                         > 
-                          {/* 激活状态的左侧紫色边带 */} 
                           {isActive && ( 
                             <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#8b5cf6]" /> 
                           )} 
@@ -419,13 +435,19 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
 
               {/* B: 提示词编辑区域 */} 
               <div className="flex-1 relative flex flex-col mb-4"> 
-                <textarea 
-                  className="flex-1 w-full p-5 bg-gray-50 dark:bg-[#16161a] rounded-lg text-[13px] text-gray-700 dark:text-gray-300 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]/50 resize-none custom-scrollbar transition-all shadow-inner font-mono" 
-                  value={editingContent}
-                  onChange={(e) => setEditingContent(e.target.value)}
-                  spellCheck="false" 
-                  placeholder="在此输入提示词模板..." 
-                /> 
+                {selectedId === 'buildShotSplitPrompt' ? (
+                  <div className="flex-1 w-full p-5 bg-gray-50 dark:bg-[#16161a] rounded-lg text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed flex items-center justify-center">
+                    目前未使用
+                  </div>
+                ) : (
+                  <textarea 
+                    className="flex-1 w-full p-5 bg-gray-50 dark:bg-[#16161a] rounded-lg text-[13px] text-gray-700 dark:text-gray-300 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]/50 resize-none custom-scrollbar transition-all shadow-inner font-mono" 
+                    value={editingContent}
+                    onChange={(e) => setEditingContent(e.target.value)}
+                    spellCheck="false" 
+                    placeholder="在此输入提示词模板..." 
+                  /> 
+                )}
               </div> 
 
               {/* 底部提示信息 */} 

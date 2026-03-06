@@ -413,15 +413,32 @@ export const generateShotList = async (scriptData: ScriptData, model: string = '
     throw new Error('分镜生成失败：AI返回为空（可能是 JSON 结构不匹配或场景内容未被识别）。请打开控制台查看分镜生成日志。');
   }
 
-  return allShots.map((s, idx) => ({
-    ...s,
-    id: `shot-${idx + 1}`,
-    keyframes: Array.isArray(s.keyframes) ? s.keyframes.map((k: any) => ({
-      ...k,
-      id: `kf-${idx + 1}-${k.type}`,
-      status: 'pending'
-    })) : []
-  }));
+  return allShots.map((s, idx) => {
+    // 兼容逻辑：如果 AI 未返回 keyframes 数组但返回了 aiImagePrompt，则自动构建起始帧
+    let keyframes = Array.isArray(s.keyframes) ? s.keyframes : [];
+    if (keyframes.length === 0 && s.aiImagePrompt) {
+      keyframes = [{
+        type: 'start',
+        visualPrompt: s.aiImagePrompt,
+        status: 'pending'
+      }];
+    }
+
+    return {
+      ...s,
+      id: `shot-${idx + 1}`,
+      keyframes: keyframes.map((k: any) => ({
+        ...k,
+        id: `kf-${idx + 1}-${k.type || 'start'}`,
+        status: 'pending'
+      })),
+      // 显式确保新字段被传递（防止 AI 返回 null）
+      aiImagePrompt: s.aiImagePrompt || '',
+      aiVideoPrompt: s.aiVideoPrompt || '',
+      audioEffects: s.audioEffects || '',
+      notes: s.notes || ''
+    };
+  });
 };
 
 // ============================================

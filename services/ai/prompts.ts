@@ -876,53 +876,52 @@ export const buildShotListGenerationPrompt = (
   totalShotsNeeded: number,
   shotsPerScene: number
 ): string => {
-  const fallback = `You are a professional cinematographer and director.
-Language: ${language}
-Visual Style: ${stylePrompt}
-Target Total Shots: ${totalShotsNeeded}
-Approximate Shots for this Scene: ${shotsPerScene}
-
-${artDirectionBlock}
-
-Current Scene (${index + 1}/${scriptData.scenes.length}):
-Location: ${scene.location}
-Time: ${scene.time}
-Atmosphere: ${scene.atmosphere}
-
-Story Paragraphs for this Scene:
-${paragraphs}
-
-Task: Break down this scene into a detailed list of shots.
-
-⚠️ CRITICAL RULES FOR SHOT GRANULARITY (MUST FOLLOW):
-1. ONE CAMERA SETUP = ONE SHOT. If the camera angle, subject, or shot size changes, you MUST create a NEW shot in the JSON array.
-2. DURATION LIMIT: Each shot should represent only 2-4 seconds of screen time.
-3. DO NOT combine multiple distinct events or perspectives into a single shot.
-   - ❌ BAD Example: "Male lead clutches chest, turns pale. Coffee cup slips, slow-motion brown liquid spills on keyboard. Colleagues unaware." (This combines a Medium Shot, a Close-up, and a Wide Shot. It is WRONG.)
-   - ✅ GOOD Example:
-     Shot 1 (Medium): "Male lead clutches chest, turns pale, looking pained."
-     Shot 2 (Close-up): "Coffee cup slipping from hand, brown liquid spilling on keyboard."
-     Shot 3 (Wide): "Colleagues working, unaware of the situation. Fluorescent light flickers."
-
-Each shot must have:
-- actionSummary: Detailed visual description of action (Focus ONLY on what is visible in this specific 2-4 second camera angle)
-- dialogue: Character dialogue (if any)
-- cameraMovement: Specific camera movement (e.g., Pan, Tilt, Dolly, Tracking)
-- shotSize: Shot size (e.g., Wide, Medium, Close-up)
-- characters: List of character IDs present in the shot
-
-Return a valid JSON object:
-{
-  "shots": [
-    {
-      "actionSummary": "string",
-      "dialogue": "string",
-      "cameraMovement": "string",
-      "shotSize": "string",
-      "characters": ["character_id"]
-    }
-  ]
-}`;
+  const fallback = `你是一名院线级电影的专业摄影指导（DP）、导演，同时也是顶级的 AI 影视制作专家。你擅长以极度细腻的“切片式”讲戏和剪辑思路拆解镜头，并能将传统的视听语言精准转化为 AI 绘画（文生图）和 AI 视频（图生视频）的生图提示词。 
+ 
+ 语言: ${language} 
+ 视觉风格/大模型基调: ${stylePrompt} 
+ 目标总镜头数: ${totalShotsNeeded} 
+ 本场景大约镜头数: ${shotsPerScene} 
+ 
+ ${artDirectionBlock} 
+ 
+ 当前场景 (${index + 1}/${scriptData.scenes.length})： 
+ 地点: ${scene.location} 
+ 时间: ${scene.time} 
+ 氛围: ${scene.atmosphere} 
+ 
+ 本场景的故事段落： 
+ ${paragraphs} 
+ 
+ 任务：将这个场景拆解为一个极度详细的、可直接用于 AI 影视工作流生成的镜头列表。为了保证剪辑的节奏感和丰富的视听语言，你需要尽可能细化镜头。 
+ 
+ ⚠️ 镜头颗粒度与拆解法则（必须绝对遵守）： 
+ 1. 单机位/单景别 = 单镜头：只要相机角度、主体或景别发生任何微小变化，必须立刻在 JSON 数组中创建一个新镜头。 
+ 2. 极短时长限制：每个镜头只应表示 1–3 秒的屏幕时间，用密集的剪辑点建立电影感。 
+ 3. 强制包含覆盖镜头（Coverage）：绝对不能只用全景或双人镜头一到底。强制在合理节点插入：反应镜头（微表情）、插入特写（手部、关键道具、环境细节）、主观镜头 (POV)。 
+ 4. 动作的微观切片：严禁在一个镜头内交代一个完整的复杂动作。必须拆分（例：推门手部特写 -> 迈入房间中景 -> 视线环视全景）。 
+ 
+ 🤖 AI 生成逻辑法则（必须绝对遵守）： 
+ 1. aiImagePrompt (文生图逻辑): 提取当前镜头的视觉核心。公式为：主体描述 + 背景环境 + 景别 + 构图角度 + 光影氛围 + 材质细节 + ${stylePrompt}。使用短语和词组，而非长句。 
+ 2. aiVideoPrompt (图生视频逻辑): 专注于“画面中什么在动”。公式为：主体微小动作 + 物理环境动态（如风、烟雾、光影变化） + 运镜方向。严禁出现超出 3 秒的复杂连贯动作。 
+ 3. 画面一致性：相邻镜头的 aiImagePrompt 必须保持环境光影和角色特征的连贯。 
+ 
+ 返回一个有效的 JSON 对象，严格使用以下数据结构： 
+ { 
+   "shots": [ 
+     { 
+       "shotSize": "string", // 景别（例：Extreme Wide, Medium, Close-up, Macro） 
+       "cameraMovement": "string", // 运镜（例：Static, Pan, Tilt, Dolly in, Handheld, Tracking） 
+       "actionSummary": "string", // 镜头的视觉内容描述（传统分镜语言） 
+       "aiImagePrompt": "string", // 文生图逻辑词组（主体+环境+光影+构图+风格） 
+       "aiVideoPrompt": "string", // 图生视频动态词组（主体微动+环境动态+运镜） 
+       "dialogue": "string", // 角色对白（如果没有则为空字符串） 
+       "audioEffects": "string", // 关键音效或BGM提示（例：沉重的心跳声，风声呼啸） 
+       "characters": ["character_id"], // 出现在该镜头中的角色ID列表 
+       "notes": "string" // 导演备注（该镜头的情绪作用或剪辑点提示） 
+     } 
+   ] 
+ }`;
   const template = getEffectivePrompt('buildShotListGenerationPrompt', fallback);
   return applyTemplate(template, {
     language,
