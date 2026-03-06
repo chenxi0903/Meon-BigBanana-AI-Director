@@ -289,8 +289,9 @@ export const parseScriptToData = async (
  * 自动检测并修正分镜中的角色
  * 1. 修正 AI 可能返回的角色名称为 ID
  * 2. 如果 AI 未返回角色，尝试根据 actionSummary 和 dialogue 自动匹配
+ * 3. 支持解说剧第一人称模式：如果开启，将"我"识别为主角（列表中的第一个角色）
  */
-const autoDetectCharacters = (shots: any[], allCharacters: any[]): any[] => {
+const autoDetectCharacters = (shots: any[], allCharacters: any[], enableFirstPersonMode: boolean = false): any[] => {
   if (!allCharacters || allCharacters.length === 0) return shots;
 
   // 预处理角色名称，生成匹配用的别名列表
@@ -309,6 +310,10 @@ const autoDetectCharacters = (shots: any[], allCharacters: any[]): any[] => {
       aliases: Array.from(aliases)
     };
   });
+
+  // 第一人称模式下，假设第一个角色是主角
+  const mainCharacterId = enableFirstPersonMode && allCharacters.length > 0 ? String(allCharacters[0].id) : null;
+  const firstPersonPronouns = ['我', '咱', '俺', 'me', 'i', 'my'];
 
   return shots.map(shot => {
     const detectedIDs = new Set<string>();
@@ -362,6 +367,16 @@ const autoDetectCharacters = (shots: any[], allCharacters: any[]): any[] => {
           detectedIDs.add(char.id);
         }
       });
+
+      // 3. 第一人称模式匹配
+      if (mainCharacterId) {
+        // 检查对话中是否包含第一人称代词
+        const dialogue = (shot.dialogue || '').toLowerCase();
+        // 简单的关键词匹配，未来可以优化为分词匹配
+        if (firstPersonPronouns.some(p => dialogue.includes(p))) {
+           detectedIDs.add(mainCharacterId);
+        }
+      }
     }
 
     return {
@@ -375,7 +390,7 @@ const autoDetectCharacters = (shots: any[], allCharacters: any[]): any[] => {
  * 生成分镜列表
  * 根据剧本数据和目标时长，为每个场景生成适量的分镜头
  */
-export const generateShotList = async (scriptData: ScriptData, model: string = 'gpt-5.1'): Promise<Shot[]> => {
+export const generateShotList = async (scriptData: ScriptData, model: string = 'gpt-5.1', enableFirstPersonMode: boolean = false): Promise<Shot[]> => {
   console.log('🎬 generateShotList 调用 - 使用模型:', model, '视觉风格:', scriptData.visualStyle);
   logScriptProgress('正在生成分镜列表...');
   const overallStartTime = Date.now();
@@ -439,7 +454,7 @@ export const generateShotList = async (scriptData: ScriptData, model: string = '
       skeletonShots = Array.isArray(parsed.shots) ? parsed.shots : [];
       
       // 自动修正角色信息 (AI 返回的可能不准确，这里进行后处理)
-      skeletonShots = autoDetectCharacters(skeletonShots, scriptData.characters);
+      skeletonShots = autoDetectCharacters(skeletonShots, scriptData.characters, enableFirstPersonMode);
       
       console.log(`  ✅ 场景 ${index + 1} 骨架生成完成，共 ${skeletonShots.length} 个镜头`);
     } catch (e: any) {

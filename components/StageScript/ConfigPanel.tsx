@@ -13,6 +13,7 @@ interface Props {
   customDurationInput: string;
   customModelInput: string;
   customStyleInput: string;
+  enableFirstPersonMode?: boolean;
   isProcessing: boolean;
   error: string | null;
   onShowModelConfig?: () => void;
@@ -24,6 +25,7 @@ interface Props {
   onCustomDurationChange: (value: string) => void;
   onCustomModelChange: (value: string) => void;
   onCustomStyleChange: (value: string) => void;
+  onFirstPersonModeChange?: (value: boolean) => void;
   onAnalyze: () => void;
 }
 
@@ -36,6 +38,7 @@ const ConfigPanel: React.FC<Props> = ({
   customDurationInput,
   customModelInput,
   customStyleInput,
+  enableFirstPersonMode = false,
   isProcessing,
   error,
   onShowModelConfig,
@@ -47,6 +50,7 @@ const ConfigPanel: React.FC<Props> = ({
   onCustomDurationChange,
   onCustomModelChange,
   onCustomStyleChange,
+  onFirstPersonModeChange,
   onAnalyze
 }) => {
   return (
@@ -124,6 +128,35 @@ const ConfigPanel: React.FC<Props> = ({
             </button>{' '}
             中可添加更多模型
           </p>
+        </div>
+
+        {/* Other Modes */}
+        <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
+          <h3 className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">其他模式</h3>
+          
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <label htmlFor="first-person-mode" className="text-xs font-medium text-[var(--text-secondary)] cursor-pointer select-none">
+                解说剧第一人称模式
+              </label>
+              <p className="text-[9px] text-[var(--text-muted)] max-w-[200px]">
+                识别剧本中的第一人称对话（"我"），将其自动关联为主角。
+              </p>
+            </div>
+            <button
+              id="first-person-mode"
+              onClick={() => onFirstPersonModeChange && onFirstPersonModeChange(!enableFirstPersonMode)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-base)] ${
+                enableFirstPersonMode ? 'bg-[var(--accent)]' : 'bg-[var(--bg-elevated)] border border-[var(--border-primary)]'
+              }`}
+            >
+              <span
+                className={`${
+                  enableFirstPersonMode ? 'translate-x-4.5' : 'translate-x-0.5'
+                } inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Visual Style */}

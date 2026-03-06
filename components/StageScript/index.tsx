@@ -30,6 +30,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
   const [localLanguage, setLocalLanguage] = useState(project.language || DEFAULTS.language);
   const [localModel, setLocalModel] = useState(project.shotGenerationModel || getRegistryState().activeModels.chat || DEFAULTS.model);
   const [localVisualStyle, setLocalVisualStyle] = useState(project.visualStyle || DEFAULTS.visualStyle);
+  const [enableFirstPersonMode, setEnableFirstPersonMode] = useState(project.enableFirstPersonMode || false);
   const [customDurationInput, setCustomDurationInput] = useState('');
   const [customModelInput, setCustomModelInput] = useState('');
   const [customStyleInput, setCustomStyleInput] = useState('');
@@ -59,6 +60,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setLocalLanguage(project.language || DEFAULTS.language);
     setLocalModel(project.shotGenerationModel || getRegistryState().activeModels.chat || DEFAULTS.model);
     setLocalVisualStyle(project.visualStyle || DEFAULTS.visualStyle);
+    setEnableFirstPersonMode(project.enableFirstPersonMode || false);
   }, [project.id]);
 
   // 上报生成状态给父组件，用于导航锁定
@@ -149,6 +151,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
         language: localLanguage,
         visualStyle: finalVisualStyle,
         shotGenerationModel: finalModel,
+        enableFirstPersonMode,
         isParsingScript: true
       });
 
@@ -174,7 +177,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
       console.log('📞 调用 generateShotList, 传入模型:', finalModel);
       logScriptProgress('开始生成分镜...');
       setProcessingMessage('正在生成分镜...');
-      const shots = await generateShotList(scriptData, finalModel);
+      const shots = await generateShotList(scriptData, finalModel, enableFirstPersonMode);
 
       updateProject({ 
         scriptData, 
@@ -641,6 +644,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
             customDurationInput={customDurationInput}
             customModelInput={customModelInput}
             customStyleInput={customStyleInput}
+            enableFirstPersonMode={enableFirstPersonMode}
             isProcessing={isProcessing}
             error={error}
             onShowModelConfig={onShowModelConfig}
@@ -652,6 +656,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
             onCustomDurationChange={setCustomDurationInput}
             onCustomModelChange={setCustomModelInput}
             onCustomStyleChange={setCustomStyleInput}
+            onFirstPersonModeChange={setEnableFirstPersonMode}
             onAnalyze={handleAnalyze}
           />
           <ScriptEditor

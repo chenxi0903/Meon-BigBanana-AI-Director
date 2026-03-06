@@ -277,6 +277,9 @@ export interface ProjectState {
   shots: Shot[];
   isParsingScript: boolean;
   renderLogs: RenderLog[]; // History of all API calls for this project
+  
+  // Script Analysis Options
+  enableFirstPersonMode?: boolean; // 解说剧第一人称模式
 }
 
 // ============================================
