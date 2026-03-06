@@ -27,6 +27,7 @@ const PROMPT_CATEGORIES = [
     items: [ 
       { id: 'buildSimpleScriptParsePrompt', title: '快速脚本解析', type: 'Prompt', isDefault: true, usage: '把原始文本解析为结构化剧本 JSON（标题/角色/场景/段落）用于快速脚本解析。', content: 'You are a script parsing assistant. Extract characters, scenes, and dialogs into valid JSON format...' }, 
       { id: 'buildSimpleShotGenerationPrompt', title: '初版分镜规划 (Deprecated)', type: 'Prompt', isDefault: false, usage: '基于脚本数据生成分镜列表（shot list）用于初版分镜规划。（已过时，仅供参考）', content: 'Generate a shot list based on the provided script. Detail the camera angles and actions...' }, 
+      { id: 'buildSimpleVisualPromptGenerationPrompt', title: '快速出图视觉提示词', type: 'Prompt', isDefault: false, usage: '为单个角色或场景生成视觉提示词（含负面词）用于快速出图。', content: 'Create a highly detailed image generation prompt and negative prompt for the following entity...' }, 
     ]
   },
   {
@@ -37,9 +38,6 @@ const PROMPT_CATEGORIES = [
       { id: 'buildShotVisualDetailsPrompt', title: '视觉细节填充 (Stage 2)', type: 'Prompt', isDefault: true, usage: '为分镜骨架生成详细的 AI 绘画/视频提示词。', content: '你是一名顶级 AI 视觉导演...' },
       { id: 'buildShotListGenerationPrompt', title: '单步分镜生成 (Legacy)', type: 'Prompt', isDefault: false, usage: '旧版单步生成逻辑，容易导致 Token 溢出。已折叠。', content: '你是一名院线级电影的专业摄影指导...' },
     ]
-  }, 
-      { id: 'buildSimpleVisualPromptGenerationPrompt', title: '快速出图视觉提示词', type: 'Prompt', isDefault: false, usage: '为单个角色或场景生成视觉提示词（含负面词）用于快速出图。', content: 'Create a highly detailed image generation prompt and negative prompt for the following entity...' }, 
-    ] 
   }, 
   { 
     category: 'Shot Service（镜头/关键帧）', 
