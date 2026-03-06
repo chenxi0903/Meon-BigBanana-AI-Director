@@ -13,7 +13,7 @@ import {
   logScriptProgress,
 } from './apiCore';
 import { getStylePrompt } from './promptConstants';
-import { buildScriptParsingPrompt, buildShotListGenerationPrompt, buildScriptContinuationPrompt, buildScriptRewritePrompt } from './prompts';
+import { buildScriptParsingPrompt, buildShotListGenerationPrompt, buildShotListSkeletonPrompt, buildShotVisualDetailsPrompt, buildScriptContinuationPrompt, buildScriptRewritePrompt } from './prompts';
 import { generateArtDirection, generateAllCharacterPrompts, generateVisualPrompts } from './visualService';
 
 // Re-export 日志回调函数（保持外部 API 兼容）
@@ -331,11 +331,11 @@ export const generateShotList = async (scriptData: ScriptData, model: string = '
     const scenesCount = scriptData.scenes.length;
     const shotsPerScene = Math.max(1, Math.round(totalShotsNeeded / scenesCount));
 
-    const prompt = buildShotListGenerationPrompt(
+    // ————————————————————————————————————————————————
+    // Phase 1: Skeleton Generation (结构生成)
+    // ————————————————————————————————————————————————
+    const skeletonPrompt = buildShotListSkeletonPrompt(
       lang,
-      stylePrompt,
-      visualStyle,
-      artDirectionBlock,
       scene,
       index,
       paragraphs,
@@ -344,55 +344,104 @@ export const generateShotList = async (scriptData: ScriptData, model: string = '
       shotsPerScene
     );
 
-    let responseText = '';
+    let skeletonShots: any[] = [];
     try {
-      console.log(`  📡 场景 ${index + 1} API调用 - 模型:`, model);
-      responseText = await retryOperation(() => chatCompletion(prompt, model, 0.5, 8192, 'json_object'));
+      console.log(`  Step 1: 场景 ${index + 1} 分镜骨架生成 - 模型:`, model);
+      const responseText = await retryOperation(() => chatCompletion(skeletonPrompt, model, 0.5, 4096, 'json_object'));
       const text = cleanJsonString(responseText);
       const parsed = JSON.parse(text);
-
-      const shots = Array.isArray(parsed)
-        ? parsed
-        : (parsed && Array.isArray((parsed as any).shots) ? (parsed as any).shots : []);
-
-      const validShots = Array.isArray(shots) ? shots : [];
-      const result = validShots.map((s: any) => ({
-        ...s,
-        sceneId: String(scene.id)
-      }));
-
-      addRenderLogWithTokens({
-        type: 'script-parsing',
-        resourceId: `shot-gen-scene-${scene.id}-${Date.now()}`,
-        resourceName: `分镜生成 - 场景${index + 1}: ${scene.location}`,
-        status: 'success',
-        model: model,
-        prompt: prompt.substring(0, 200) + '...',
-        duration: Date.now() - sceneStartTime
-      });
-
-      return result;
+      skeletonShots = Array.isArray(parsed.shots) ? parsed.shots : [];
+      
+      console.log(`  ✅ 场景 ${index + 1} 骨架生成完成，共 ${skeletonShots.length} 个镜头`);
     } catch (e: any) {
-      console.error(`Failed to generate shots for scene ${scene.id}`, e);
-      try {
-        console.error(`  ↳ sceneId=${scene.id}, sceneIndex=${index}, responseText(snippet)=`, String(responseText || '').slice(0, 500));
-      } catch {
-        // ignore
-      }
-
+      console.error(`Failed to generate skeleton for scene ${scene.id}`, e);
       addRenderLogWithTokens({
         type: 'script-parsing',
-        resourceId: `shot-gen-scene-${scene.id}-${Date.now()}`,
-        resourceName: `分镜生成 - 场景${index + 1}: ${scene.location}`,
+        resourceId: `shot-gen-scene-${scene.id}-skeleton`,
+        resourceName: `分镜骨架生成失败 - 场景${index + 1}`,
         status: 'failed',
         model: model,
-        prompt: prompt.substring(0, 200) + '...',
-        error: e.message || String(e),
+        prompt: skeletonPrompt.substring(0, 200) + '...',
+        error: e.message,
         duration: Date.now() - sceneStartTime
       });
-
       return [];
     }
+
+    if (skeletonShots.length === 0) return [];
+
+    // ————————————————————————————————————————————————
+    // Phase 2: Visual Details Generation (细节填充)
+    // ————————————————————————————————————————————————
+    console.log(`  Step 2: 场景 ${index + 1} 视觉细节生成 (并行批处理)...`);
+    
+    // 按每 5 个镜头一批进行并行处理，避免 Token 溢出
+    const BATCH_SIZE_DETAILS = 5;
+    const detailsPromises = [];
+    
+    for (let i = 0; i < skeletonShots.length; i += BATCH_SIZE_DETAILS) {
+        const batch = skeletonShots.slice(i, i + BATCH_SIZE_DETAILS);
+        // 简化 batch 对象，只保留 AI 需要的信息，减少 Input Token
+        const simplifiedBatch = batch.map((s: any) => ({
+            id: s.id,
+            shotSize: s.shotSize,
+            cameraMovement: s.cameraMovement,
+            actionSummary: s.actionSummary
+        }));
+
+        const batchPrompt = buildShotVisualDetailsPrompt(
+            lang,
+            stylePrompt,
+            visualStyle,
+            artDirectionBlock,
+            simplifiedBatch
+        );
+        
+        detailsPromises.push((async () => {
+             try {
+                 // 使用较高的 temperature 激发创造力
+                 const res = await retryOperation(() => chatCompletion(batchPrompt, model, 0.7, 4096, 'json_object'));
+                 const text = cleanJsonString(res);
+                 const parsed = JSON.parse(text);
+                 return parsed.details || [];
+             } catch (e) {
+                 console.error(`Visual details batch failed for scene ${scene.id}`, e);
+                 return [];
+             }
+        })());
+    }
+
+    const detailsResults = await Promise.all(detailsPromises);
+    const allDetails = detailsResults.flat();
+    
+    // Merge details back to skeleton
+    const result = skeletonShots.map((s: any) => {
+        // 尝试匹配细节 (假设 ID 是数字或字符串且匹配)
+        const detail = allDetails.find((d: any) => String(d.id) === String(s.id));
+        return {
+            ...s,
+            sceneId: String(scene.id),
+            // 如果 AI 没生成细节，用 actionSummary 兜底，防止空 Prompt
+            aiImagePrompt: detail?.aiImagePrompt || s.actionSummary,
+            aiVideoPrompt: detail?.aiVideoPrompt || '',
+            audioEffects: detail?.audioEffects || '',
+            // 确保其他字段存在
+            characters: s.characters || [],
+            notes: s.notes || ''
+        };
+    });
+
+    addRenderLogWithTokens({
+      type: 'script-parsing',
+      resourceId: `shot-gen-scene-${scene.id}-${Date.now()}`,
+      resourceName: `分镜生成(两阶段) - 场景${index + 1}: ${scene.location}`,
+      status: 'success',
+      model: model,
+      prompt: skeletonPrompt.substring(0, 200) + '... (Stage 1)',
+      duration: Date.now() - sceneStartTime
+    });
+
+    return result;
   };
 
   // Process scenes sequentially
@@ -490,7 +539,7 @@ export const continueScriptStream = async (
   const prompt = buildScriptContinuationPrompt(existingScript, language);
 
   try {
-    const result = await retryOperation(() => chatCompletionStream(prompt, model, 0.8, undefined, 600000, onDelta));
+    const result = await retryOperation(() => chatCompletionStream(prompt, model, 0.8, 4096, undefined, 600000, onDelta));
     const duration = Date.now() - startTime;
 
     await addRenderLogWithTokens({
@@ -555,7 +604,7 @@ export const rewriteScriptStream = async (
   const prompt = buildScriptRewritePrompt(originalScript, language);
 
   try {
-    const result = await retryOperation(() => chatCompletionStream(prompt, model, 0.7, undefined, 600000, onDelta));
+    const result = await retryOperation(() => chatCompletionStream(prompt, model, 0.7, 8192, undefined, 600000, onDelta));
     const duration = Date.now() - startTime;
 
     await addRenderLogWithTokens({

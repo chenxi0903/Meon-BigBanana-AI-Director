@@ -95,7 +95,9 @@ const collectPrompts = (): PromptTemplate[] => {
     'buildTurnaroundPanelPrompt',
     'buildTurnaroundImagePrompt',
     'buildScriptParsingPrompt',
-    'buildShotListGenerationPrompt',
+    'buildShotListSkeletonPrompt', // New Stage 1
+    'buildShotVisualDetailsPrompt', // New Stage 2
+    'buildShotListGenerationPrompt', // Legacy
     'buildScriptContinuationPrompt',
     'buildScriptRewritePrompt',
     'buildArtDirectionPrompt',

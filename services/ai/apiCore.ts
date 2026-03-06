@@ -185,7 +185,27 @@ export const cleanJsonString = (str: string): string => {
   let cleaned = str.trim();
   cleaned = cleaned.replace(/^```(?:json)?\s*/i, '');
   cleaned = cleaned.replace(/```\s*$/, '');
-  return cleaned.trim();
+  cleaned = cleaned.trim();
+
+  // 尝试修复截断的 JSON (简单策略)
+  // 如果末尾不是 '}' 或 ']'，尝试根据已有的结构补全
+  if (cleaned && !cleaned.endsWith('}') && !cleaned.endsWith(']')) {
+    console.warn('⚠️ 检测到 JSON 可能被截断，尝试简单修复...');
+    
+    // 检查是否是 shots 数组被截断
+    // 假设结构是 { "shots": [ ... ] }
+    if (cleaned.includes('"shots":') && cleaned.lastIndexOf(']') === -1) {
+       // 尝试找到最后一个完整的对象结束符
+       const lastObjectEnd = cleaned.lastIndexOf('}');
+       if (lastObjectEnd > -1) {
+          // 保留到最后一个完整对象，并闭合数组和根对象
+          cleaned = cleaned.substring(0, lastObjectEnd + 1) + ']}';
+          console.log('⚠️ 已尝试修复截断的 JSON (保留完整对象)');
+       }
+    }
+  }
+
+  return cleaned;
 };
 
 /**
@@ -251,7 +271,8 @@ export const chatCompletion = async (
   const requestBody: any = {
     model: requestModel,
     messages: [{ role: 'user', content: prompt }],
-    temperature: temperature
+    temperature: temperature,
+    max_tokens: maxTokens // Explicitly set max_tokens to avoid provider default limits
   };
   if (resolved?.providerId === 'volcengine' && resolved?.params?.reasoningEffort) {
     requestBody.reasoning_effort = resolved.params.reasoningEffort;
@@ -320,6 +341,7 @@ export const chatCompletionStream = async (
   prompt: string,
   model: string = 'gpt-5.1',
   temperature: number = 0.7,
+  maxTokens: number = 8192, // Added maxTokens parameter
   responseFormat: 'json_object' | undefined,
   timeout: number = 600000,
   onDelta?: (delta: string) => void,
@@ -354,7 +376,8 @@ export const chatCompletionStream = async (
     model: requestModel,
     messages: [{ role: 'user', content: prompt }],
     temperature: temperature,
-    stream: true
+    stream: true,
+    max_tokens: maxTokens // Explicitly set max_tokens
   };
   if (resolved?.providerId === 'volcengine' && resolved?.params?.reasoningEffort) {
     requestBody.reasoning_effort = resolved.params.reasoningEffort;

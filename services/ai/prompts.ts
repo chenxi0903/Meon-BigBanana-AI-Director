@@ -937,6 +937,115 @@ export const buildShotListGenerationPrompt = (
     shotsPerScene,
   });
 };
+
+// ————————————————————————————————————————————————
+// ✅ Stage 1: Skeleton Generation Prompt
+// ————————————————————————————————————————————————
+export const buildShotListSkeletonPrompt = (
+  language: string,
+  scene: any,
+  index: number,
+  paragraphs: string,
+  scriptData: any,
+  totalShotsNeeded: number,
+  shotsPerScene: number
+): string => {
+  const fallback = `你是一名专业导演和剪辑师。你的任务是将当前场景拆解为一系列镜头（分镜表骨架），专注于叙事节奏、运镜和动作设计。
+
+语言: ${language}
+目标总镜头数: ${totalShotsNeeded}
+本场景大约镜头数: ${shotsPerScene}
+
+当前场景 (${index + 1}/${scriptData.scenes.length})：
+地点: ${scene.location}
+时间: ${scene.time}
+氛围: ${scene.atmosphere}
+
+本场景的故事段落：
+${paragraphs}
+
+任务：将这个场景拆解为一个详细的镜头列表。
+⚠️ 镜头拆解法则：
+1. 单机位/单景别 = 单镜头：相机角度或景别变化必须创建新镜头。
+2. 节奏感：每个镜头时长控制在 1-4 秒。
+3. 覆盖镜头：必须包含全景、中景、特写、反应镜头等多种景别。
+4. 动作切片：复杂动作必须拆分为多个镜头。
+
+返回一个有效的 JSON 对象，严格使用以下数据结构（不要包含 AI 提示词）：
+{
+  "shots": [
+    {
+      "id": "number", // 镜头序号 (1, 2, 3...)
+      "shotSize": "string", // 景别 (Extreme Wide, Medium, Close-up, Macro)
+      "cameraMovement": "string", // 运镜 (Static, Pan, Tilt, Dolly, Handheld)
+      "actionSummary": "string", // 镜头的视觉内容描述 (中文)
+      "dialogue": "string", // 角色对白 (如果没有则为空)
+      "characters": ["character_id"], // 出现在该镜头中的角色ID列表
+      "notes": "string" // 导演备注
+    }
+  ]
+}`;
+  const template = getEffectivePrompt('buildShotListSkeletonPrompt', fallback);
+  return applyTemplate(template, {
+    language,
+    scene,
+    index,
+    paragraphs,
+    scriptData,
+    scriptDataJson: JSON.stringify(scriptData, null, 2),
+    totalShotsNeeded,
+    shotsPerScene,
+  });
+};
+
+// ————————————————————————————————————————————————
+// ✅ Stage 2: Visual Details Prompt
+// ————————————————————————————————————————————————
+export const buildShotVisualDetailsPrompt = (
+  language: string,
+  stylePrompt: string,
+  visualStyle: string,
+  artDirectionBlock: string,
+  shots: any[]
+): string => {
+  const fallback = `你是一名顶级 AI 视觉导演。你的任务是为以下分镜列表生成极度细腻的 AI 绘画和 AI 视频提示词。
+
+语言: ${language}
+视觉风格: ${visualStyle}
+大模型基调: ${stylePrompt}
+
+${artDirectionBlock}
+
+待处理的镜头列表：
+${JSON.stringify(shots, null, 2)}
+
+任务：为每个镜头生成 aiImagePrompt, aiVideoPrompt 和 audioEffects。
+
+⚠️ AI 生成逻辑法则：
+1. aiImagePrompt (文生图): 提取视觉核心。公式：主体描述 + 背景环境 + 景别 + 构图角度 + 光影氛围 + 材质细节 + ${stylePrompt}。必须严格遵守全局美术指导（Global Art Direction）。
+2. aiVideoPrompt (图生视频): 专注于“画面中什么在动”。公式：主体微小动作 + 物理环境动态（风、光、烟） + 运镜方向。
+3. 画面一致性：确保相邻镜头的环境和光影连贯。
+
+返回一个有效的 JSON 对象，包含对应镜头的视觉详情：
+{
+  "details": [
+    {
+      "id": "number", // 对应输入的镜头序号
+      "aiImagePrompt": "string", // 极度细腻的英文或中文提示词
+      "aiVideoPrompt": "string", // 视频生成提示词
+      "audioEffects": "string" // 音效设计
+    }
+  ]
+}`;
+  const template = getEffectivePrompt('buildShotVisualDetailsPrompt', fallback);
+  return applyTemplate(template, {
+    language,
+    stylePrompt,
+    visualStyle,
+    artDirectionBlock,
+    shots,
+  });
+};
 // ————————————————————————————————————————————————
 // ✅ 修改结束 
 // ————————————————————————————————————————————————
