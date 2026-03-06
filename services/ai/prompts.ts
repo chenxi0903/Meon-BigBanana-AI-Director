@@ -1007,6 +1007,77 @@ ${characterList}
 };
 
 // ————————————————————————————————————————————————
+// ✅ Stage 1 (First Person Mode): Skeleton Generation Prompt
+// ————————————————————————————————————————————————
+export const buildFirstPersonShotListSkeletonPrompt = (
+  language: string,
+  scene: any,
+  index: number,
+  paragraphs: string,
+  scriptData: any,
+  totalShotsNeeded: number,
+  shotsPerScene: number
+): string => {
+  const characterList = Array.isArray(scriptData.characters) 
+    ? scriptData.characters.map((c: any) => `- Name: ${c.name} (ID: ${c.id})`).join('\n')
+    : '无角色信息';
+
+  const fallback = `你是一名顶级短视频解说类内容导演。你的任务是将当前场景拆解为一系列**极度密集、节奏极快**的镜头（分镜表骨架），专为第一人称解说/自述类视频设计。
+
+语言: ${language}
+目标总镜头数: ${Math.floor(totalShotsNeeded * 1.5)} (解说剧模式需要更多镜头)
+本场景大约镜头数: ${Math.floor(shotsPerScene * 1.5)}
+
+当前场景 (${index + 1}/${scriptData.scenes.length})：
+地点: ${scene.location}
+时间: ${scene.time}
+氛围: ${scene.atmosphere}
+
+本场景的故事段落：
+${paragraphs}
+
+可用角色列表:
+${characterList}
+
+任务：将这个场景拆解为一个详细的镜头列表。
+⚠️ **解说剧模式特殊法则（必须严格执行）**：
+1. **极速节奏**：每个镜头时长必须严格控制在 **0.5 - 2秒**。严禁出现超过3秒的长镜头。
+2. **碎片化叙事**：将一个完整的动作或心理活动，拆解为 3-5 个微小的视觉碎片。例如：“喝咖啡”必须拆解为：(1)手拿杯子特写 -> (2)嘴唇接触杯沿特写 -> (3)喉结滚动特写 -> (4)放下杯子声音特写 -> (5)满足的表情中景。
+3. **视觉冲击力**：大量使用**特写(Close-up)**和**微距(Macro)**镜头，强调细节质感和情绪张力。
+4. **主观视角**：多使用第一人称视角(POV)和心理投射画面，让观众产生强烈的代入感。
+5. **画面跳跃**：镜头之间的连接可以是跳跃的、非线性的，注重情绪流动的连贯而非物理空间的连续。
+6. **空镜与意象**：穿插 20% 的空镜头或意象镜头（如：飘落的叶子、破碎的玻璃、流动的光影）来配合解说词的节奏和意境。
+
+返回一个有效的 JSON 对象，严格使用以下数据结构：
+{
+  "shots": [
+    {
+      "id": "number", // 镜头序号
+      "shotSize": "string", // 景别 (Macro, Extreme Close-up, Close-up, Medium, POV) - 偏向特写和微距
+      "cameraMovement": "string", // 运镜 (Handheld, Whip Pan, Crash Zoom, Static) - 偏向动态和不稳定感
+      "actionSummary": "string", // 镜头的视觉内容描述 (中文，极度具体，强调细节)
+      "dialogue": "string", // 角色对白/解说词
+      "characters": ["character_id"], // 角色ID列表
+      "notes": "string" // 导演备注 (例如：卡点重音，画面闪白等)
+    }
+  ]
+}`;
+  const template = getEffectivePrompt('buildFirstPersonShotListSkeletonPrompt', fallback);
+  return applyTemplate(template, {
+    language,
+    scene,
+    index,
+    paragraphs,
+    scriptData,
+    scriptDataJson: JSON.stringify(scriptData, null, 2),
+    totalShotsNeeded,
+    shotsPerScene,
+    characterList,
+  });
+};
+
+
+// ————————————————————————————————————————————————
 // ✅ Stage 2: Visual Details Prompt
 // ————————————————————————————————————————————————
 export const buildShotVisualDetailsPrompt = (

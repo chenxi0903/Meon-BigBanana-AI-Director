@@ -13,7 +13,7 @@ import {
   logScriptProgress,
 } from './apiCore';
 import { getStylePrompt } from './promptConstants';
-import { buildScriptParsingPrompt, buildShotListGenerationPrompt, buildShotListSkeletonPrompt, buildShotVisualDetailsPrompt, buildScriptContinuationPrompt, buildScriptRewritePrompt } from './prompts';
+import { buildScriptParsingPrompt, buildShotListGenerationPrompt, buildShotListSkeletonPrompt, buildFirstPersonShotListSkeletonPrompt, buildShotVisualDetailsPrompt, buildScriptContinuationPrompt, buildScriptRewritePrompt } from './prompts';
 import { generateArtDirection, generateAllCharacterPrompts, generateVisualPrompts } from './visualService';
 
 // Re-export 日志回调函数（保持外部 API 兼容）
@@ -435,15 +435,30 @@ export const generateShotList = async (scriptData: ScriptData, model: string = '
     // ————————————————————————————————————————————————
     // Phase 1: Skeleton Generation (结构生成)
     // ————————————————————————————————————————————————
-    const skeletonPrompt = buildShotListSkeletonPrompt(
-      lang,
-      scene,
-      index,
-      paragraphs,
-      scriptData,
-      totalShotsNeeded,
-      shotsPerScene
-    );
+    let skeletonPrompt: string;
+    
+    if (enableFirstPersonMode) {
+      console.log('  🎥 启用解说剧第一人称模式分镜拆解...');
+      skeletonPrompt = buildFirstPersonShotListSkeletonPrompt(
+        lang,
+        scene,
+        index,
+        paragraphs,
+        scriptData,
+        totalShotsNeeded,
+        shotsPerScene
+      );
+    } else {
+      skeletonPrompt = buildShotListSkeletonPrompt(
+        lang,
+        scene,
+        index,
+        paragraphs,
+        scriptData,
+        totalShotsNeeded,
+        shotsPerScene
+      );
+    }
 
     let skeletonShots: any[] = [];
     try {

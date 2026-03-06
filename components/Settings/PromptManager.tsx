@@ -35,6 +35,7 @@ const PROMPT_CATEGORIES = [
     icon: <Video className="w-4 h-4" />,
     items: [
       { id: 'buildShotListSkeletonPrompt', title: '分镜骨架生成 (Stage 1)', type: 'Prompt', isDefault: true, usage: '生成分镜的基础结构（景别、运镜、动作），不包含详细提示词。', content: '你是一名专业导演和剪辑师...' },
+      { id: 'buildFirstPersonShotListSkeletonPrompt', title: '解说剧分镜骨架 (Stage 1)', type: 'Prompt', isDefault: true, usage: '【解说剧模式】生成快节奏、特写密集的分镜骨架。', content: '你是一名顶级短视频解说类内容导演...' },
       { id: 'buildShotVisualDetailsPrompt', title: '视觉细节填充 (Stage 2)', type: 'Prompt', isDefault: true, usage: '为分镜骨架生成详细的 AI 绘画/视频提示词。', content: '你是一名顶级 AI 视觉导演...' },
       { id: 'buildShotListGenerationPrompt', title: '单步分镜生成 (Legacy)', type: 'Prompt', isDefault: false, usage: '旧版单步生成逻辑，容易导致 Token 溢出。已折叠。', content: '你是一名院线级电影的专业摄影指导...' },
     ]
