@@ -14,6 +14,7 @@ interface Props {
   customModelInput: string;
   customStyleInput: string;
   enableFirstPersonMode?: boolean;
+  enableSeedanceAdvancedMode?: boolean;
   isProcessing: boolean;
   error: string | null;
   onShowModelConfig?: () => void;
@@ -26,6 +27,7 @@ interface Props {
   onCustomModelChange: (value: string) => void;
   onCustomStyleChange: (value: string) => void;
   onFirstPersonModeChange?: (value: boolean) => void;
+  onSeedanceAdvancedModeChange?: (value: boolean) => void;
   onAnalyze: () => void;
 }
 
@@ -39,6 +41,7 @@ const ConfigPanel: React.FC<Props> = ({
   customModelInput,
   customStyleInput,
   enableFirstPersonMode = false,
+  enableSeedanceAdvancedMode = false,
   isProcessing,
   error,
   onShowModelConfig,
@@ -51,6 +54,7 @@ const ConfigPanel: React.FC<Props> = ({
   onCustomModelChange,
   onCustomStyleChange,
   onFirstPersonModeChange,
+  onSeedanceAdvancedModeChange,
   onAnalyze
 }) => {
   return (
@@ -134,7 +138,7 @@ const ConfigPanel: React.FC<Props> = ({
         <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
           <h3 className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">其他模式</h3>
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="space-y-0.5">
               <label htmlFor="first-person-mode" className="text-xs font-medium text-[var(--text-secondary)] cursor-pointer select-none">
                 解说剧第一人称模式
@@ -153,6 +157,30 @@ const ConfigPanel: React.FC<Props> = ({
               <span
                 className={`${
                   enableFirstPersonMode ? 'translate-x-4.5' : 'translate-x-0.5'
+                } inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm`}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <label htmlFor="seedance-advanced-mode" className="text-xs font-medium text-[var(--text-secondary)] cursor-pointer select-none">
+                Seedance 2.0 高级模式 （Beta）
+              </label>
+              <p className="text-[9px] text-[var(--text-muted)] max-w-[200px]">
+                打开后会跳过分镜生成的部分，直接生成物料的提示词部分和画面的部分
+              </p>
+            </div>
+            <button
+              id="seedance-advanced-mode"
+              onClick={() => onSeedanceAdvancedModeChange && onSeedanceAdvancedModeChange(!enableSeedanceAdvancedMode)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-base)] ${
+                enableSeedanceAdvancedMode ? 'bg-[var(--accent)]' : 'bg-[var(--bg-elevated)] border border-[var(--border-primary)]'
+              }`}
+            >
+              <span
+                className={`${
+                  enableSeedanceAdvancedMode ? 'translate-x-4.5' : 'translate-x-0.5'
                 } inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm`}
               />
             </button>

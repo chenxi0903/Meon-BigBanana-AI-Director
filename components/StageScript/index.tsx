@@ -31,6 +31,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
   const [localModel, setLocalModel] = useState(project.shotGenerationModel || getRegistryState().activeModels.chat || DEFAULTS.model);
   const [localVisualStyle, setLocalVisualStyle] = useState(project.visualStyle || DEFAULTS.visualStyle);
   const [enableFirstPersonMode, setEnableFirstPersonMode] = useState(project.enableFirstPersonMode || false);
+  const [enableSeedanceAdvancedMode, setEnableSeedanceAdvancedMode] = useState(project.enableSeedanceAdvancedMode || false);
   const [customDurationInput, setCustomDurationInput] = useState('');
   const [customModelInput, setCustomModelInput] = useState('');
   const [customStyleInput, setCustomStyleInput] = useState('');
@@ -61,6 +62,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setLocalModel(project.shotGenerationModel || getRegistryState().activeModels.chat || DEFAULTS.model);
     setLocalVisualStyle(project.visualStyle || DEFAULTS.visualStyle);
     setEnableFirstPersonMode(project.enableFirstPersonMode || false);
+    setEnableSeedanceAdvancedMode(project.enableSeedanceAdvancedMode || false);
   }, [project.id]);
 
   // 上报生成状态给父组件，用于导航锁定
@@ -152,6 +154,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
         visualStyle: finalVisualStyle,
         shotGenerationModel: finalModel,
         enableFirstPersonMode,
+        enableSeedanceAdvancedMode,
         isParsingScript: true
       });
 
@@ -174,10 +177,44 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
       // Set the specific episode title
       scriptData.title = finalTitle;
 
-      console.log('📞 调用 generateShotList, 传入模型:', finalModel);
-      logScriptProgress('开始生成分镜...');
-      setProcessingMessage('正在生成分镜...');
-      const shots = await generateShotList(scriptData, finalModel, enableFirstPersonMode);
+      let shots: Shot[] = [];
+      
+      if (enableSeedanceAdvancedMode) {
+        console.log('🚀 Seedance 2.0 Advanced Mode: Skipping storyboard generation...');
+        logScriptProgress('Seedance 2.0 高级模式：跳过分镜生成...');
+        setProcessingMessage('正在生成物料提示词...');
+        
+        // Generate simplified shots (1 per scene)
+        shots = scriptData.scenes.map((scene, idx) => {
+           const shotId = `shot-${idx + 1}`;
+           return {
+               id: shotId,
+               sceneId: scene.id,
+               actionSummary: scene.atmosphere || '场景镜头',
+               cameraMovement: '固定',
+               shotSize: '全景',
+               characters: [], // No automatic character assignment in this mode
+               keyframes: [{
+                   id: `kf-${shotId}-start`,
+                   type: 'start',
+                   visualPrompt: scene.visualPrompt || '',
+                   status: 'pending'
+               }],
+               // Ensure other required fields
+               aiImagePrompt: scene.visualPrompt || '',
+               aiVideoPrompt: '',
+               audioEffects: '',
+               notes: ''
+           };
+        });
+        
+        logScriptProgress('已生成简化分镜列表');
+      } else {
+        console.log('📞 调用 generateShotList, 传入模型:', finalModel);
+        logScriptProgress('开始生成分镜...');
+        setProcessingMessage('正在生成分镜...');
+        shots = await generateShotList(scriptData, finalModel, enableFirstPersonMode);
+      }
 
       updateProject({ 
         scriptData, 
@@ -645,6 +682,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
             customModelInput={customModelInput}
             customStyleInput={customStyleInput}
             enableFirstPersonMode={enableFirstPersonMode}
+            enableSeedanceAdvancedMode={enableSeedanceAdvancedMode}
             isProcessing={isProcessing}
             error={error}
             onShowModelConfig={onShowModelConfig}
@@ -657,6 +695,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
             onCustomModelChange={setCustomModelInput}
             onCustomStyleChange={setCustomStyleInput}
             onFirstPersonModeChange={setEnableFirstPersonMode}
+            onSeedanceAdvancedModeChange={setEnableSeedanceAdvancedMode}
             onAnalyze={handleAnalyze}
           />
           <ScriptEditor

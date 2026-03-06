@@ -280,6 +280,7 @@ export interface ProjectState {
   
   // Script Analysis Options
   enableFirstPersonMode?: boolean; // 解说剧第一人称模式
+  enableSeedanceAdvancedMode?: boolean; // Seedance 2.0 高级模式
 }
 
 // ============================================
