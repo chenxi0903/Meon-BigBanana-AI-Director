@@ -950,6 +950,10 @@ export const buildShotListSkeletonPrompt = (
   totalShotsNeeded: number,
   shotsPerScene: number
 ): string => {
+  const characterList = Array.isArray(scriptData.characters) 
+    ? scriptData.characters.map((c: any) => `- Name: ${c.name} (ID: ${c.id})`).join('\n')
+    : '无角色信息';
+
   const fallback = `你是一名专业导演和剪辑师。你的任务是将当前场景拆解为一系列镜头（分镜表骨架），专注于叙事节奏、运镜和动作设计。
 
 语言: ${language}
@@ -963,6 +967,9 @@ export const buildShotListSkeletonPrompt = (
 
 本场景的故事段落：
 ${paragraphs}
+
+可用角色列表 (请准确使用以下ID):
+${characterList}
 
 任务：将这个场景拆解为一个详细的镜头列表。
 ⚠️ 镜头拆解法则：
@@ -995,6 +1002,7 @@ ${paragraphs}
     scriptDataJson: JSON.stringify(scriptData, null, 2),
     totalShotsNeeded,
     shotsPerScene,
+    characterList,
   });
 };
 

@@ -286,6 +286,92 @@ export const parseScriptToData = async (
 // ============================================
 
 /**
+ * 自动检测并修正分镜中的角色
+ * 1. 修正 AI 可能返回的角色名称为 ID
+ * 2. 如果 AI 未返回角色，尝试根据 actionSummary 和 dialogue 自动匹配
+ */
+const autoDetectCharacters = (shots: any[], allCharacters: any[]): any[] => {
+  if (!allCharacters || allCharacters.length === 0) return shots;
+
+  // 预处理角色名称，生成匹配用的别名列表
+  const characterMatchers = allCharacters.map(char => {
+    const aliases = new Set<string>();
+    aliases.add(char.name); // 完整名字
+
+    // 处理括号： "阿强（李强）" -> ["阿强", "李强"]
+    // 同时支持中文全角括号和英文半角括号
+    const parts = char.name.split(/[（）()]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+    parts.forEach((p: string) => aliases.add(p));
+
+    return {
+      id: String(char.id),
+      name: char.name,
+      aliases: Array.from(aliases)
+    };
+  });
+
+  return shots.map(shot => {
+    const detectedIDs = new Set<string>();
+
+    // 1. 处理 AI 已返回的角色 (可能是 ID 也可能是 Name)
+    if (Array.isArray(shot.characters)) {
+      shot.characters.forEach((val: string) => {
+        const valStr = String(val);
+        
+        // 尝试匹配 ID
+        const charById = characterMatchers.find(c => c.id === valStr);
+        if (charById) {
+          detectedIDs.add(charById.id);
+          return;
+        }
+        
+        // 尝试匹配 Name 或 Alias
+        // 逻辑：如果 val 等于某个 alias，或者 val 包含 alias，或者 alias 包含 val
+        const charByName = characterMatchers.find(c => 
+            c.aliases.includes(valStr) || 
+            c.aliases.some(alias => valStr.includes(alias) || alias.includes(valStr))
+        );
+        if (charByName) {
+          detectedIDs.add(charByName.id);
+        }
+      });
+    }
+
+    // 2. 文本扫描匹配 (增强召回)
+    // 将 actionSummary 和 dialogue 拼接
+    const textToScan = `${shot.actionSummary || ''} ${shot.dialogue || ''}`;
+    
+    // 空镜头检测关键词
+    const emptyShotKeywords = ['空镜头', '风景', '无人', '环境', '全景', '远景', '特写', '局部', '静物', 'landscape', 'scenery', 'nobody', 'no people', 'empty shot'];
+    
+    // 检查是否为空镜头：
+    // 1. 如果 AI 明确返回了 characters 为空数组，且 actionSummary 包含空镜头关键词，则认为是空镜头，跳过自动匹配
+    // 2. 如果 actionSummary 强烈暗示是环境描写且没有对话，也倾向于不自动添加角色
+    const isExplicitlyEmpty = Array.isArray(shot.characters) && shot.characters.length === 0;
+    const hasEmptyKeywords = emptyShotKeywords.some(kw => (shot.actionSummary || '').toLowerCase().includes(kw));
+    const hasDialogue = !!shot.dialogue;
+
+    // 如果 AI 说是空的，且包含空镜头关键词，且没有对话 -> 确实是空镜头，跳过自动检测
+    if (isExplicitlyEmpty && hasEmptyKeywords && !hasDialogue) {
+        // do nothing, keep it empty
+    } else if (textToScan.trim()) {
+      characterMatchers.forEach(char => {
+        // 检查任何别名是否出现在文本中
+        // 只有当别名长度大于1时才匹配（避免匹配单个字造成误判，如"我"、"他"等，虽然通常名字不会这么短）
+        if (char.aliases.some(alias => alias.length > 1 && textToScan.includes(alias))) {
+          detectedIDs.add(char.id);
+        }
+      });
+    }
+
+    return {
+      ...shot,
+      characters: Array.from(detectedIDs)
+    };
+  });
+};
+
+/**
  * 生成分镜列表
  * 根据剧本数据和目标时长，为每个场景生成适量的分镜头
  */
@@ -351,6 +437,9 @@ export const generateShotList = async (scriptData: ScriptData, model: string = '
       const text = cleanJsonString(responseText);
       const parsed = JSON.parse(text);
       skeletonShots = Array.isArray(parsed.shots) ? parsed.shots : [];
+      
+      // 自动修正角色信息 (AI 返回的可能不准确，这里进行后处理)
+      skeletonShots = autoDetectCharacters(skeletonShots, scriptData.characters);
       
       console.log(`  ✅ 场景 ${index + 1} 骨架生成完成，共 ${skeletonShots.length} 个镜头`);
     } catch (e: any) {
