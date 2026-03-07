@@ -37,7 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'script', label: '剧本与故事', icon: FileText, sub: 'Phase 01' },
     // 根据固定场景模式开关决定是否显示“空间与状态”
-    ...(enableFixedSceneMode ? [{ id: 'fixed-scene', label: '空间与状态 (BETA)', icon: ListTree, sub: 'Phase 01.5', isButton: true }] : []),
+    ...(enableFixedSceneMode ? [{ id: 'fixed-scene', label: '空间与状态 (BETA)', icon: ListTree, sub: 'Phase 01.5' }] : []),
     { id: 'assets', label: '角色与场景', icon: Users, sub: 'Phase 02' },
     { id: 'director', label: '导演工作台', icon: Clapperboard, sub: 'Phase 03' },
     { id: 'export', label: '成片与导出', icon: Film, sub: 'Phase 04' },
