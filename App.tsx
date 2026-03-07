@@ -585,6 +585,8 @@ function App() {
             onShowModelConfig={() => setShowModelConfig(true)}
             isNavigationLocked={isGenerating}
             onUpgradeProject={project.type !== 'series' ? handleUpgradeProject : undefined}
+            enableFixedSceneMode={project.enableFixedSceneMode}
+            onToggleFixedSceneSidebar={() => console.log('Toggle Fixed Scene Sidebar')}
           />
       )}
       
