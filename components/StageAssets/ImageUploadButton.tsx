@@ -44,31 +44,29 @@ const ImageUploadButton: React.FC<ImageUploadButtonProps> = ({
 
   if (variant === 'inline') {
     return (
-      <div className="flex gap-1">
-        {onGenerate && (
-          <button
-            onClick={onGenerate}
-            disabled={isGenerating}
-            className={buttonClass}
-          >
-            {isGenerating ? (
+      <div className="flex flex-col gap-2 w-full">
+        {isGenerating ? (
+          onStop && (
+            <button
+              onClick={onStop}
+              className={`w-full justify-center ${buttonClass}`}
+            >
               <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
+              {stopLabel}
+            </button>
+          )
+        ) : (
+          onGenerate && (
+            <button
+              onClick={onGenerate}
+              className={`w-full justify-center ${buttonClass}`}
+            >
               <Sparkles className="w-3 h-3" />
-            )}
-            {generateLabel}
-          </button>
+              {generateLabel}
+            </button>
+          )
         )}
-        {onStop && isGenerating && (
-          <button
-            onClick={onStop}
-            className={buttonClass}
-          >
-            <X className="w-3 h-3" />
-            {stopLabel}
-          </button>
-        )}
-        <label className={buttonClass}>
+        <label className={`w-full justify-center ${buttonClass}`}>
           <Upload className="w-3 h-3" />
           {uploadLabel}
           <input

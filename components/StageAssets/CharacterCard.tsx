@@ -75,7 +75,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
         {/* Character Image */}
         <div className="w-48 flex-shrink-0">
           <div 
-            className={`${character.referenceImage ? 'bg-[var(--bg-elevated)]' : 'aspect-video bg-[var(--bg-elevated)]'} relative rounded-lg overflow-hidden cursor-pointer ${character.referenceImage ? 'flex items-center justify-center' : ''}`}
+            className={`${character.referenceImage ? 'bg-[var(--bg-elevated)]' : 'aspect-[9/16] bg-[var(--bg-elevated)]'} relative rounded-lg overflow-hidden cursor-pointer ${character.referenceImage ? 'flex items-center justify-center' : ''}`}
             onClick={() => character.referenceImage && onImageClick(character.referenceImage)}
           >
             {character.referenceImage ? (
@@ -88,7 +88,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-2 text-center">
                 {character.status === 'failed' ? (
-                  <>
+                  <div className="flex flex-col items-center gap-2 w-full px-4">
                     <AlertCircle className="w-8 h-8 mb-2 text-[var(--error)]" />
                     <span className="text-[10px] text-[var(--error)] mb-2">生成失败</span>
                     <ImageUploadButton
@@ -101,10 +101,10 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
                       uploadLabel="上传"
                       generateLabel="重试"
                     />
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <User className="w-8 h-8 mb-2 opacity-10" />
+                  <div className="flex flex-col items-center gap-2 w-full px-4">
+                    {!isGenerating && <User className="w-8 h-8 mb-2 opacity-10" />}
                     <ImageUploadButton
                       variant="inline"
                       size="small"
@@ -113,9 +113,10 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
                       onStop={onStopGenerate}
                       isGenerating={isGenerating}
                       uploadLabel="上传"
-                      generateLabel="生成"
+                      generateLabel={isGenerating ? '生成中...' : '生成'}
+                      stopLabel="停止生成"
                     />
-                  </>
+                  </div>
                 )}
               </div>
             )}
