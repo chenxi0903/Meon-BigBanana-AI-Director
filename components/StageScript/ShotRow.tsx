@@ -129,6 +129,12 @@ const ShotRow: React.FC<Props> = ({
           <div className="px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-primary)] text-[10px] font-mono text-[var(--text-tertiary)] uppercase text-center rounded">
             {shot.cameraMovement}
           </div>
+          {shot.audioEffects && (
+            <div className="px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-primary)] text-[10px] font-mono text-[var(--text-tertiary)] text-center rounded flex items-center justify-center gap-1" title={shot.audioEffects}>
+              <Volume2 className="w-2.5 h-2.5 flex-shrink-0" />
+              <span className="truncate max-w-full">AUDIO</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -198,13 +204,6 @@ const ShotRow: React.FC<Props> = ({
             {shot.dialogue && (
               <div className="pl-6 border-l-2 border-[var(--border-primary)] group-hover:border-[var(--border-secondary)] transition-colors py-1 mt-3">
                 <p className="text-[var(--text-tertiary)] font-serif italic text-sm">"{shot.dialogue}"</p>
-              </div>
-            )}
-
-            {shot.audioEffects && (
-              <div className="flex items-center gap-2 mt-2 text-xs text-[var(--text-tertiary)]">
-                <Volume2 className="w-3 h-3 flex-shrink-0" />
-                <span className="font-mono opacity-80">{shot.audioEffects}</span>
               </div>
             )}
           </div>
