@@ -56,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, proje
       {/* Header */}
       <div className="p-6 border-b border-[var(--border-subtle)]">
         <div className="flex items-center gap-3 mb-6 group cursor-default">
-          <img src="/favicon(1).ico" alt="Logo" className="w-8 h-8 flex-shrink-0 transition-transform group-hover:scale-110" />
+          <img src="/logo.ico" alt="Logo" className="w-8 h-8 flex-shrink-0 transition-transform group-hover:scale-110" />
         </div>
 
         <button 
