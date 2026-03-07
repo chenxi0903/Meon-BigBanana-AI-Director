@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectState, Shot } from '../../types';
 import { useAlert } from '../GlobalAlert';
-import { parseScriptToData, generateShotList, continueScript, continueScriptStream, rewriteScript, rewriteScriptStream, setScriptLogCallback, clearScriptLogCallback, logScriptProgress } from '../../services/aiService';
+import { parseScriptToData, generateShotList, continueScript, continueScriptStream, rewriteScript, rewriteScriptStream, setScriptLogCallback, clearScriptLogCallback, logScriptProgress, retryOperation, chatCompletion, cleanJsonString } from '../../services/aiService';
+import { buildSeedanceAdvancedModePrompt } from '../../services/ai/prompts';
 import { getRegistryState } from '../../services/modelRegistry';
 import { checkPromptsConnection } from '../promptUtils';
 import { getFinalValue, validateConfig } from './utils';
@@ -184,31 +185,73 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
         logScriptProgress('Seedance 2.0 高级模式：跳过分镜生成...');
         setProcessingMessage('正在生成物料提示词...');
         
-        // Generate simplified shots (1 per scene)
-        shots = scriptData.scenes.map((scene, idx) => {
-           const shotId = `shot-${idx + 1}`;
-           return {
+        // Generate simplified shots (15s intervals per scene)
+        shots = [];
+        
+        for (let i = 0; i < scriptData.scenes.length; i++) {
+          const scene = scriptData.scenes[i];
+          const sceneIndex = i + 1;
+          logScriptProgress(`正在处理场景 ${sceneIndex}: ${scene.location}...`);
+
+          const advancedPrompt = buildSeedanceAdvancedModePrompt(
+            scene.atmosphere || scene.location,
+            finalVisualStyle
+          );
+
+          try {
+            const responseText = await retryOperation(() => chatCompletion(advancedPrompt, finalModel, 0.7, 4096, 'json_object'));
+            const text = cleanJsonString(responseText);
+            const parsed = JSON.parse(text);
+            const generatedShots = parsed.shots || [];
+
+            generatedShots.forEach((s: any, sIdx: number) => {
+               const shotId = `shot-${sceneIndex}-${sIdx + 1}`;
+               shots.push({
+                   id: shotId,
+                   sceneId: scene.id,
+                   actionSummary: s.visualPrompt || scene.atmosphere || '场景镜头',
+                   cameraMovement: s.cameraMovement || '固定',
+                   shotSize: s.shotSize || '全景',
+                   characters: [], // No automatic character assignment in this mode
+                   keyframes: [{
+                       id: `kf-${shotId}-start`,
+                       type: 'start',
+                       visualPrompt: s.visualPrompt || scene.visualPrompt || '',
+                       status: 'pending'
+                   }],
+                   // Ensure other required fields
+                   aiImagePrompt: s.visualPrompt || scene.visualPrompt || '',
+                   aiVideoPrompt: '',
+                   audioEffects: '',
+                   notes: `Time Range: ${s.timeRange || '0-15s'}`
+               });
+            });
+          } catch (e) {
+            console.error(`Failed to generate advanced shots for scene ${scene.id}`, e);
+            // Fallback to single shot if AI fails
+            const shotId = `shot-${sceneIndex}-1`;
+            shots.push({
                id: shotId,
                sceneId: scene.id,
                actionSummary: scene.atmosphere || '场景镜头',
                cameraMovement: '固定',
                shotSize: '全景',
-               characters: [], // No automatic character assignment in this mode
+               characters: [],
                keyframes: [{
                    id: `kf-${shotId}-start`,
                    type: 'start',
                    visualPrompt: scene.visualPrompt || '',
                    status: 'pending'
                }],
-               // Ensure other required fields
                aiImagePrompt: scene.visualPrompt || '',
                aiVideoPrompt: '',
                audioEffects: '',
-               notes: ''
-           };
-        });
+               notes: 'Fallback shot'
+            });
+          }
+        }
         
-        logScriptProgress('已生成简化分镜列表');
+        logScriptProgress('已生成 Seedance 2.0 高级模式分镜列表');
       } else {
         console.log('📞 调用 generateShotList, 传入模型:', finalModel);
         logScriptProgress('开始生成分镜...');

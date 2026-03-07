@@ -13,7 +13,7 @@ import {
   logScriptProgress,
 } from './apiCore';
 import { getStylePrompt } from './promptConstants';
-import { buildScriptParsingPrompt, buildShotListGenerationPrompt, buildShotListSkeletonPrompt, buildFirstPersonShotListSkeletonPrompt, buildShotVisualDetailsPrompt, buildScriptContinuationPrompt, buildScriptRewritePrompt } from './prompts';
+import { buildScriptParsingPrompt, buildShotListGenerationPrompt, buildShotListSkeletonPrompt, buildFirstPersonShotListSkeletonPrompt, buildShotVisualDetailsPrompt, buildScriptContinuationPrompt, buildScriptRewritePrompt, buildSeedanceAdvancedModePrompt } from './prompts';
 import { generateArtDirection, generateAllCharacterPrompts, generateVisualPrompts } from './visualService';
 
 // Re-export 日志回调函数（保持外部 API 兼容）
@@ -291,7 +291,7 @@ export const parseScriptToData = async (
  * 2. 如果 AI 未返回角色，尝试根据 actionSummary 和 dialogue 自动匹配
  * 3. 支持解说剧第一人称模式：如果开启，将"我"识别为主角（列表中的第一个角色）
  */
-const autoDetectCharacters = (shots: any[], allCharacters: any[], enableFirstPersonMode: boolean = false): any[] => {
+export const autoDetectCharacters = (shots: any[], allCharacters: any[], enableFirstPersonMode: boolean = false): any[] => {
   if (!allCharacters || allCharacters.length === 0) return shots;
 
   // 预处理角色名称，生成匹配用的别名列表

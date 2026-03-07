@@ -1,4 +1,4 @@
-import { getStylePromptCN, getStylePrompt } from './promptConstants';
+import { getStylePromptCN, getStylePrompt, SEEDANCE_ADVANCED_MODE_PROMPT } from './promptConstants';
 import { getEffectivePrompt } from '../promptManager';
 
 type TemplateVars = Record<string, any>;
@@ -21,6 +21,18 @@ const applyTemplate = (template: string, vars: TemplateVars): string => {
     return value == null ? '' : String(value);
   });
   return replaced.replace(/\\\$\{/g, '${');
+};
+
+export const buildSeedanceAdvancedModePrompt = (
+  sceneDescription: string,
+  visualStyle: string
+): string => {
+  const fallback = SEEDANCE_ADVANCED_MODE_PROMPT;
+  const template = getEffectivePrompt('buildSeedanceAdvancedModePrompt', fallback);
+  return applyTemplate(template, {
+    scene_description: sceneDescription,
+    visual_style: visualStyle
+  });
 };
 
 // ============================================

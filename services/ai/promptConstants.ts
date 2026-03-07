@@ -5,6 +5,47 @@
 
 import { supabase } from '../supabase/client';
 
+export const SEEDANCE_ADVANCED_MODE_PROMPT = `
+You are a professional film director and cinematographer. 
+Your task is to break down a scene description into a series of visual shots for a video generation AI.
+
+STRICT RULES:
+1. Each shot MUST be exactly 15 seconds long.
+2. The shots must cover the timeline sequentially: 0-5s, 5-10s, 10-15s.
+3. For each 5-second interval, provide a detailed visual description focusing on camera movement, subject action, and lighting.
+4. Output MUST be a JSON object with a "shots" array.
+
+Input Scene:
+{scene_description}
+
+Input Visual Style:
+{visual_style}
+
+Output Format:
+{
+  "shots": [
+    {
+      "timeRange": "0-5s",
+      "visualPrompt": "Detailed visual description for the first 5 seconds...",
+      "cameraMovement": "Pan right/Zoom in/Static...",
+      "shotSize": "Medium Shot/Close-up/Wide Shot..."
+    },
+    {
+      "timeRange": "5-10s",
+      "visualPrompt": "Detailed visual description for the next 5 seconds...",
+      "cameraMovement": "...",
+      "shotSize": "..."
+    },
+    {
+      "timeRange": "10-15s",
+      "visualPrompt": "Detailed visual description for the final 5 seconds...",
+      "cameraMovement": "...",
+      "shotSize": "..."
+    }
+  ]
+}
+`;
+
 // ============================================
 // 本地默认值 (Fallback)
 // ============================================
