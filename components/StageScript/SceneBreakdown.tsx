@@ -16,6 +16,7 @@ interface Props {
   editingShotActionId: string | null;
   editingShotActionText: string;
   editingShotDialogueText: string;
+  editingShotAudioEffectsText: string;
   onEditCharacter: (charId: string, prompt: string) => void;
   onSaveCharacter: (charId: string, prompt: string) => void;
   onCancelCharacterEdit: () => void;
@@ -26,7 +27,7 @@ interface Props {
   onAddCharacterToShot: (shotId: string, charId: string) => void;
   onRemoveCharacterFromShot: (shotId: string, charId: string) => void;
   onCloseShotCharactersEdit: () => void;
-  onEditShotAction: (shotId: string, action: string, dialogue: string) => void;
+  onEditShotAction: (shotId: string, action: string, dialogue: string, audioEffects: string) => void;
   onSaveShotAction: () => void;
   onCancelShotAction: () => void;
   onAddShot: (sceneId: string) => void;
@@ -46,6 +47,7 @@ const SceneBreakdown: React.FC<Props> = ({
   editingShotActionId,
   editingShotActionText,
   editingShotDialogueText,
+  editingShotAudioEffectsText,
   onEditCharacter,
   onSaveCharacter,
   onCancelCharacterEdit,
@@ -202,6 +204,7 @@ const SceneBreakdown: React.FC<Props> = ({
                           editingShotActionId={editingShotActionId}
                           editingShotActionText={editingShotActionText}
                           editingShotDialogueText={editingShotDialogueText}
+                          editingShotAudioEffectsText={editingShotAudioEffectsText}
                           onEditPrompt={onEditShotPrompt}
                           onSavePrompt={onSaveShotPrompt}
                           onCancelPrompt={onCancelShotPrompt}

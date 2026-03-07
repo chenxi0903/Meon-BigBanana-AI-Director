@@ -394,6 +394,7 @@ export const createSubShot = (
     dialogue: undefined, // 不继承对白 - 对白通常只在特定子镜头中出现，由AI在actionSummary中体现
     cameraMovement: subShotData.cameraMovement, // 使用AI生成的镜头运动
     shotSize: subShotData.shotSize, // 使用AI生成的景别
+    audioEffects: subShotData.audioEffects, // 使用AI生成的音效描述
     characters: [...originalShot.characters], // 继承角色列表
     characterVariations: { ...originalShot.characterVariations }, // 继承角色变体映射
     keyframes: keyframes, // 使用AI生成的关键帧（包含visualPrompt）

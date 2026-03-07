@@ -54,6 +54,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
   const [editingShotActionId, setEditingShotActionId] = useState<string | null>(null);
   const [editingShotActionText, setEditingShotActionText] = useState('');
   const [editingShotDialogueText, setEditingShotDialogueText] = useState('');
+  const [editingShotAudioEffectsText, setEditingShotAudioEffectsText] = useState('');
 
   useEffect(() => {
     setLocalScript(project.rawScript);
@@ -485,10 +486,11 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
   };
 
   // Shot action editing handlers
-  const handleEditShotAction = (shotId: string, action: string, dialogue: string) => {
+  const handleEditShotAction = (shotId: string, action: string, dialogue: string, audioEffects: string) => {
     setEditingShotActionId(shotId);
     setEditingShotActionText(action);
     setEditingShotDialogueText(dialogue);
+    setEditingShotAudioEffectsText(audioEffects);
   };
 
   const handleSaveShotAction = () => {
@@ -499,7 +501,8 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
         return {
           ...shot,
           actionSummary: editingShotActionText,
-          dialogue: editingShotDialogueText.trim() || undefined
+          dialogue: editingShotDialogueText.trim() || undefined,
+          audioEffects: editingShotAudioEffectsText.trim() || undefined
         };
       }
       return shot;
@@ -509,12 +512,14 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setEditingShotActionId(null);
     setEditingShotActionText('');
     setEditingShotDialogueText('');
+    setEditingShotAudioEffectsText('');
   };
 
   const handleCancelShotAction = () => {
     setEditingShotActionId(null);
     setEditingShotActionText('');
     setEditingShotDialogueText('');
+    setEditingShotAudioEffectsText('');
   };
 
   const getNextShotId = (shots: Shot[]) => {
@@ -582,6 +587,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setEditingShotActionId(newId);
     setEditingShotActionText(newShot.actionSummary);
     setEditingShotDialogueText('');
+    setEditingShotAudioEffectsText('');
   };
 
   const handleAddShot = (sceneId: string) => {
@@ -640,6 +646,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setEditingShotActionId(newId);
     setEditingShotActionText(newShot.actionSummary);
     setEditingShotDialogueText('');
+    setEditingShotAudioEffectsText('');
   };
 
   const handleReorderShots = (sourceId: string, targetId: string) => {
@@ -688,6 +695,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
           setEditingShotActionId(null);
           setEditingShotActionText('');
           setEditingShotDialogueText('');
+          setEditingShotAudioEffectsText('');
         }
         showAlert(`${displayName} 已删除`, { type: 'success' });
       }
@@ -762,6 +770,7 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
           editingShotActionId={editingShotActionId}
           editingShotActionText={editingShotActionText}
           editingShotDialogueText={editingShotDialogueText}
+          editingShotAudioEffectsText={editingShotAudioEffectsText}
           onEditCharacter={handleEditCharacter}
           onSaveCharacter={handleSaveCharacter}
           onCancelCharacterEdit={handleCancelCharacterEdit}

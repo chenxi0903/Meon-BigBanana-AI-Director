@@ -605,6 +605,7 @@ ${shot.dialogue ? `**对白：** "${shot.dialogue}"
 3. **actionSummary**（动作描述）：清晰、具体的动作和画面内容描述（60-100字）
 4. **visualFocus**（视觉焦点）：这个镜头的视觉重点
 5. **keyframes**（关键帧数组）：包含起始帧(start)和结束帧(end)的视觉描述
+6. **audioEffects**（音效/BGM）：该子镜头的关键音效或背景音乐提示
 
 ### 专业镜头运动参考
 - 静止镜头 Static Shot
@@ -628,6 +629,7 @@ ${shot.dialogue ? `**对白：** "${shot.dialogue}"
       "cameraMovement": "静止镜头 Static Shot",
       "actionSummary": "动作描述...",
       "visualFocus": "视觉焦点描述",
+      "audioEffects": "音效描述...",
       "keyframes": [
         {
           "type": "start",
@@ -999,6 +1001,7 @@ ${characterList}
       "cameraMovement": "string", // 运镜 (Static, Pan, Tilt, Dolly, Handheld)
       "actionSummary": "string", // 镜头的视觉内容描述 (中文)
       "dialogue": "string", // 角色对白 (如果没有则为空)
+      "audioEffects": "string", // 关键音效或BGM提示
       "characters": ["character_id"], // 出现在该镜头中的角色ID列表
       "notes": "string" // 导演备注
     }
@@ -1059,6 +1062,7 @@ ${characterList}
 4. **主观视角**：多使用第一人称视角(POV)和心理投射画面，让观众产生强烈的代入感。
 5. **画面跳跃**：镜头之间的连接可以是跳跃的、非线性的，注重情绪流动的连贯而非物理空间的连续。
 6. **空镜与意象**：穿插 20% 的空镜头或意象镜头（如：飘落的叶子、破碎的玻璃、流动的光影）来配合解说词的节奏和意境。
+7. **音效强化**：为每个镜头设计关键音效（如：心跳声、快门声、风声）或 BGM 情绪点，以增强短视频的沉浸感。
 
 返回一个有效的 JSON 对象，严格使用以下数据结构：
 {
@@ -1069,6 +1073,7 @@ ${characterList}
       "cameraMovement": "string", // 运镜 (Handheld, Whip Pan, Crash Zoom, Static) - 偏向动态和不稳定感
       "actionSummary": "string", // 镜头的视觉内容描述 (中文，极度具体，强调细节)
       "dialogue": "string", // 角色对白/解说词
+      "audioEffects": "string", // 关键音效或BGM提示
       "characters": ["character_id"], // 角色ID列表
       "notes": "string" // 导演备注 (例如：卡点重音，画面闪白等)
     }

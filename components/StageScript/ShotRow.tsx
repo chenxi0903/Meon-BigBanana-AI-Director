@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Aperture, Edit2, Check, X, UserPlus, Trash2, Plus, ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
+import { Aperture, Edit2, Check, X, UserPlus, Trash2, Plus, ChevronRight, ChevronDown, GripVertical, Volume2 } from 'lucide-react';
 import { Shot, Character, ScriptData } from '../../types';
 import InlineEditor from './InlineEditor';
 import { STYLES } from './constants';
@@ -14,6 +14,7 @@ interface Props {
   editingShotActionId: string | null;
   editingShotActionText: string;
   editingShotDialogueText: string;
+  editingShotAudioEffectsText: string;
   isDragOver?: boolean;
   onEditPrompt: (shotId: string, prompt: string) => void;
   onSavePrompt: () => void;
@@ -22,7 +23,7 @@ interface Props {
   onAddCharacter: (shotId: string, charId: string) => void;
   onRemoveCharacter: (shotId: string, charId: string) => void;
   onCloseCharactersEdit: () => void;
-  onEditAction: (shotId: string, action: string, dialogue: string) => void;
+  onEditAction: (shotId: string, action: string, dialogue: string, audioEffects: string) => void;
   onSaveAction: () => void;
   onCancelAction: () => void;
   onAddSubShot: (shotId: string) => void;
@@ -43,6 +44,7 @@ const ShotRow: React.FC<Props> = ({
   editingShotActionId,
   editingShotActionText,
   editingShotDialogueText,
+  editingShotAudioEffectsText,
   isDragOver = false,
   onEditPrompt,
   onSavePrompt,
@@ -138,7 +140,7 @@ const ShotRow: React.FC<Props> = ({
               <label className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">动作描述</label>
               <textarea
                 value={editingShotActionText}
-                onChange={(e) => onEditAction(shot.id, e.target.value, editingShotDialogueText)}
+                onChange={(e) => onEditAction(shot.id, e.target.value, editingShotDialogueText, editingShotAudioEffectsText)}
                 className={STYLES.editor.textarea}
                 rows={3}
                 placeholder="输入动作描述..."
@@ -149,10 +151,21 @@ const ShotRow: React.FC<Props> = ({
               <label className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">台词（可选）</label>
               <textarea
                 value={editingShotDialogueText}
-                onChange={(e) => onEditAction(shot.id, editingShotActionText, e.target.value)}
+                onChange={(e) => onEditAction(shot.id, editingShotActionText, e.target.value, editingShotAudioEffectsText)}
                 className={`${STYLES.editor.textarea} ${STYLES.editor.serif}`}
                 rows={2}
                 placeholder="输入台词（留空表示无台词）..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">音效/BGM（可选）</label>
+              <textarea
+                value={editingShotAudioEffectsText}
+                onChange={(e) => onEditAction(shot.id, editingShotActionText, editingShotDialogueText, e.target.value)}
+                className={STYLES.editor.textarea}
+                rows={1}
+                placeholder="输入音效或背景音乐提示..."
               />
             </div>
             
@@ -174,9 +187,9 @@ const ShotRow: React.FC<Props> = ({
                 {shot.actionSummary}
               </p>
               <button
-                onClick={() => onEditAction(shot.id, shot.actionSummary, shot.dialogue || '')}
+                onClick={() => onEditAction(shot.id, shot.actionSummary, shot.dialogue || '', shot.audioEffects || '')}
                 className="opacity-0 group-hover/action:opacity-100 transition-opacity p-1.5 hover:bg-[var(--bg-hover)] rounded flex-shrink-0"
-                title="编辑动作和台词"
+                title="编辑动作、台词和音效"
               >
                 <Edit2 className="w-3.5 h-3.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]" />
               </button>
@@ -185,6 +198,13 @@ const ShotRow: React.FC<Props> = ({
             {shot.dialogue && (
               <div className="pl-6 border-l-2 border-[var(--border-primary)] group-hover:border-[var(--border-secondary)] transition-colors py-1 mt-3">
                 <p className="text-[var(--text-tertiary)] font-serif italic text-sm">"{shot.dialogue}"</p>
+              </div>
+            )}
+
+            {shot.audioEffects && (
+              <div className="flex items-center gap-2 mt-2 text-xs text-[var(--text-tertiary)]">
+                <Volume2 className="w-3 h-3 flex-shrink-0" />
+                <span className="font-mono opacity-80">{shot.audioEffects}</span>
               </div>
             )}
           </div>
