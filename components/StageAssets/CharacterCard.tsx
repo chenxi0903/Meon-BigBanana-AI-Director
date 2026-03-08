@@ -75,12 +75,12 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
         {/* Character Image */}
         <div className="w-48 flex-shrink-0">
           <div 
-            className={`${character.referenceImage ? 'bg-[var(--bg-elevated)]' : 'aspect-[9/16] bg-[var(--bg-elevated)]'} relative rounded-lg overflow-hidden cursor-pointer ${character.referenceImage ? 'flex items-center justify-center' : ''}`}
+            className={`${character.referenceImage ? 'bg-[var(--bg-elevated)]' : 'aspect-[9/16] bg-[var(--bg-elevated)]'} relative rounded-lg overflow-hidden cursor-pointer ${character.referenceImage ? '' : ''}`}
             onClick={() => character.referenceImage && onImageClick(character.referenceImage)}
           >
             {character.referenceImage ? (
               <>
-                <img src={character.referenceImage} alt={character.name} className="w-full h-auto max-h-48 object-contain" />
+                <img src={character.referenceImage} alt={character.name} className="w-full h-auto object-cover" />
                 <div className="absolute top-1.5 right-1.5 p-1 bg-[var(--accent)] text-[var(--text-primary)] rounded shadow-lg">
                   <Check className="w-3 h-3" />
                 </div>
