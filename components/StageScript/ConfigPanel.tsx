@@ -15,7 +15,6 @@ interface Props {
   customStyleInput: string;
   enableFirstPersonMode?: boolean;
   enableSeedanceAdvancedMode?: boolean;
-  enableFixedSceneMode?: boolean;
   isProcessing: boolean;
   error: string | null;
   onShowModelConfig?: () => void;
@@ -29,7 +28,6 @@ interface Props {
   onCustomStyleChange: (value: string) => void;
   onFirstPersonModeChange?: (value: boolean) => void;
   onSeedanceAdvancedModeChange?: (value: boolean) => void;
-  onFixedSceneModeChange?: (value: boolean) => void;
   onAnalyze: () => void;
 }
 
@@ -44,7 +42,6 @@ const ConfigPanel: React.FC<Props> = ({
   customStyleInput,
   enableFirstPersonMode = false,
   enableSeedanceAdvancedMode = false,
-  enableFixedSceneMode = false,
   isProcessing,
   error,
   onShowModelConfig,
@@ -58,23 +55,8 @@ const ConfigPanel: React.FC<Props> = ({
   onCustomStyleChange,
   onFirstPersonModeChange,
   onSeedanceAdvancedModeChange,
-  onFixedSceneModeChange,
   onAnalyze
 }) => {
-  const handleModeChange = (mode: 'first-person' | 'seedance' | 'fixed-scene', value: boolean) => {
-    if (!value) {
-      // If turning off, just turn off the specific mode
-      if (mode === 'first-person') onFirstPersonModeChange?.(false);
-      if (mode === 'seedance') onSeedanceAdvancedModeChange?.(false);
-      if (mode === 'fixed-scene') onFixedSceneModeChange?.(false);
-    } else {
-      // If turning on, turn off others and turn on specific mode
-      onFirstPersonModeChange?.(mode === 'first-person');
-      onSeedanceAdvancedModeChange?.(mode === 'seedance');
-      onFixedSceneModeChange?.(mode === 'fixed-scene');
-    }
-  };
-
   return (
     <div className="w-96 border-r border-[var(--border-primary)] flex flex-col bg-[var(--bg-primary)]">
       {/* Header */}
@@ -168,7 +150,7 @@ const ConfigPanel: React.FC<Props> = ({
             <button
               id="first-person-mode"
               type="button"
-              onClick={() => handleModeChange('first-person', !enableFirstPersonMode)}
+              onClick={() => onFirstPersonModeChange && onFirstPersonModeChange(!enableFirstPersonMode)}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-base)] ${
                 enableFirstPersonMode ? 'bg-[var(--accent)]' : 'bg-[var(--bg-elevated)] border border-[var(--border-primary)]'
               }`}
@@ -180,7 +162,7 @@ const ConfigPanel: React.FC<Props> = ({
             </button>
           </div>
 
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <label htmlFor="seedance-advanced-mode" className="text-xs font-medium text-[var(--text-secondary)] cursor-pointer select-none">
                 Seedance 2.0 高级模式 （Beta）
@@ -192,7 +174,7 @@ const ConfigPanel: React.FC<Props> = ({
             <button
               id="seedance-advanced-mode"
               type="button"
-              onClick={() => handleModeChange('seedance', !enableSeedanceAdvancedMode)}
+              onClick={() => onSeedanceAdvancedModeChange && onSeedanceAdvancedModeChange(!enableSeedanceAdvancedMode)}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-base)] ${
                 enableSeedanceAdvancedMode ? 'bg-[var(--accent)]' : 'bg-[var(--bg-elevated)] border border-[var(--border-primary)]'
               }`}
@@ -200,30 +182,6 @@ const ConfigPanel: React.FC<Props> = ({
               <span
                 className="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm"
                 style={{ transform: enableSeedanceAdvancedMode ? 'translateX(18px)' : 'translateX(2px)' }}
-              />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label htmlFor="fixed-scene-mode" className="text-xs font-medium text-[var(--text-secondary)] cursor-pointer select-none">
-                固定场景高级生成模式
-              </label>
-              <p className="text-[9px] text-[var(--text-muted)] max-w-[200px]">
-                打开后会在 剧本与故事 的下方 角色与场景上方 新增一个按钮 空间与状态 （BETA） 侧边栏
-              </p>
-            </div>
-            <button
-              id="fixed-scene-mode"
-              type="button"
-              onClick={() => handleModeChange('fixed-scene', !enableFixedSceneMode)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-base)] ${
-                enableFixedSceneMode ? 'bg-[var(--accent)]' : 'bg-[var(--bg-elevated)] border border-[var(--border-primary)]'
-              }`}
-            >
-              <span
-                className="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm"
-                style={{ transform: enableFixedSceneMode ? 'translateX(18px)' : 'translateX(2px)' }}
               />
             </button>
           </div>

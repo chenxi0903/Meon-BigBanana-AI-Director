@@ -15,29 +15,12 @@ interface SidebarProps {
   onShowModelConfig?: () => void;
   isNavigationLocked?: boolean;
   onUpgradeProject?: () => void; // New prop for upgrade action
-  enableFixedSceneMode?: boolean; // 新增：是否开启固定场景模式
-  onToggleFixedSceneSidebar?: () => void; // 新增：打开固定场景侧边栏
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-  currentStage, 
-  setStage, 
-  onExit, 
-  projectName, 
-  seasonName, 
-  episodeName, 
-  onShowOnboarding, 
-  onShowModelConfig, 
-  isNavigationLocked, 
-  onUpgradeProject,
-  enableFixedSceneMode,
-  onToggleFixedSceneSidebar
-}) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentStage, setStage, onExit, projectName, seasonName, episodeName, onShowOnboarding, onShowModelConfig, isNavigationLocked, onUpgradeProject }) => {
   const { theme, toggleTheme } = useTheme();
   const navItems = [
     { id: 'script', label: '剧本与故事', icon: FileText, sub: 'Phase 01' },
-    // 根据固定场景模式开关决定是否显示“空间与状态”
-    ...(enableFixedSceneMode ? [{ id: 'fixed-scene', label: '空间与状态 (BETA)', icon: ListTree, sub: 'Phase 01.5' }] : []),
     { id: 'assets', label: '角色与场景', icon: Users, sub: 'Phase 02' },
     { id: 'director', label: '导演工作台', icon: Clapperboard, sub: 'Phase 03' },
     { id: 'export', label: '成片与导出', icon: Film, sub: 'Phase 04' },
@@ -130,23 +113,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         {navItems.map((item) => {
           const isActive = currentStage === item.id;
           const isLocked = isNavigationLocked && !isActive;
-          
-          if (item.id === 'fixed-scene') {
-            return (
-              <button
-                key={item.id}
-                onClick={onToggleFixedSceneSidebar}
-                className={`w-full flex items-center justify-between px-6 py-4 transition-all duration-200 group relative border-l-2 border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--nav-hover-bg)]`}
-              >
-                <div className="flex items-center gap-3">
-                  <item.icon className={`w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]`} />
-                  <span className="font-medium text-xs tracking-wider uppercase">{item.label}</span>
-                </div>
-                <span className={`text-[10px] font-mono text-[var(--text-muted)]`}>{item.sub}</span>
-              </button>
-            );
-          }
-
           return (
             <button
               key={item.id}

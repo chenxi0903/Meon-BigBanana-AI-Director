@@ -33,7 +33,6 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
   const [localVisualStyle, setLocalVisualStyle] = useState(project.visualStyle || DEFAULTS.visualStyle);
   const [enableFirstPersonMode, setEnableFirstPersonMode] = useState(project.enableFirstPersonMode || false);
   const [enableSeedanceAdvancedMode, setEnableSeedanceAdvancedMode] = useState(project.enableSeedanceAdvancedMode || false);
-  const [enableFixedSceneMode, setEnableFixedSceneMode] = useState(project.enableFixedSceneMode || false);
   const [customDurationInput, setCustomDurationInput] = useState('');
   const [customModelInput, setCustomModelInput] = useState('');
   const [customStyleInput, setCustomStyleInput] = useState('');
@@ -66,7 +65,6 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
     setLocalVisualStyle(project.visualStyle || DEFAULTS.visualStyle);
     setEnableFirstPersonMode(project.enableFirstPersonMode || false);
     setEnableSeedanceAdvancedMode(project.enableSeedanceAdvancedMode || false);
-    setEnableFixedSceneMode(project.enableFixedSceneMode || false);
   }, [project.id]);
 
   // 上报生成状态给父组件，用于导航锁定
@@ -159,7 +157,6 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
         shotGenerationModel: finalModel,
         enableFirstPersonMode,
         enableSeedanceAdvancedMode,
-        enableFixedSceneMode,
         isParsingScript: true
       });
 
@@ -737,7 +734,6 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
             customStyleInput={customStyleInput}
             enableFirstPersonMode={enableFirstPersonMode}
             enableSeedanceAdvancedMode={enableSeedanceAdvancedMode}
-            enableFixedSceneMode={enableFixedSceneMode}
             isProcessing={isProcessing}
             error={error}
             onShowModelConfig={onShowModelConfig}
@@ -751,7 +747,6 @@ const StageScript: React.FC<Props> = ({ project, updateProject, onShowModelConfi
             onCustomStyleChange={setCustomStyleInput}
             onFirstPersonModeChange={setEnableFirstPersonMode}
             onSeedanceAdvancedModeChange={setEnableSeedanceAdvancedMode}
-            onFixedSceneModeChange={setEnableFixedSceneMode}
             onAnalyze={handleAnalyze}
           />
           <ScriptEditor
