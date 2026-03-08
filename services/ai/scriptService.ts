@@ -540,10 +540,12 @@ export const generateShotList = async (scriptData: ScriptData, model: string = '
         return {
             ...s,
             sceneId: String(scene.id),
-            // 如果 AI 没生成细节，用 actionSummary 兜底，防止空 Prompt
-            aiImagePrompt: detail?.aiImagePrompt || s.actionSummary,
+            // 直接使用 actionSummary 作为 aiImagePrompt (Stage 1)
+            aiImagePrompt: s.actionSummary || '',
+            // 使用 Stage 2 生成的 aiVideoPrompt
             aiVideoPrompt: detail?.aiVideoPrompt || '',
-            audioEffects: detail?.audioEffects || '',
+            // 直接使用 Stage 1 生成的 audioEffects
+            audioEffects: s.audioEffects || '',
             // 确保其他字段存在
             characters: s.characters || [],
             notes: s.notes || ''

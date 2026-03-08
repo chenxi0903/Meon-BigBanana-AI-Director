@@ -1104,7 +1104,7 @@ export const buildShotVisualDetailsPrompt = (
   artDirectionBlock: string,
   shots: any[]
 ): string => {
-  const fallback = `你是一名顶级 AI 视觉导演。你的任务是为以下分镜列表生成极度细腻的 AI 绘画和 AI 视频提示词。
+  const fallback = `你是一名顶级 AI 视觉导演。你的任务是为以下分镜列表生成极度细腻的 AI 视频提示词。
 
 语言: ${language}
 视觉风格: ${visualStyle}
@@ -1115,21 +1115,18 @@ ${artDirectionBlock}
 待处理的镜头列表：
 ${JSON.stringify(shots, null, 2)}
 
-任务：为每个镜头生成 aiImagePrompt, aiVideoPrompt 和 audioEffects。
+任务：为每个镜头生成 aiVideoPrompt。
 
 ⚠️ AI 生成逻辑法则：
-1. aiImagePrompt (文生图): 提取视觉核心。公式：主体描述 + 背景环境 + 景别 + 构图角度 + 光影氛围 + 材质细节 + ${stylePrompt}。必须严格遵守全局美术指导（Global Art Direction）。
-2. aiVideoPrompt (图生视频): 专注于“画面中什么在动”。公式：主体微小动作 + 物理环境动态（风、光、烟） + 运镜方向。
-3. 画面一致性：确保相邻镜头的环境和光影连贯。
+1. aiVideoPrompt (图生视频): 专注于“画面中什么在动”。公式：主体微小动作 + 物理环境动态（风、光、烟） + 运镜方向。
+2. 画面一致性：确保相邻镜头的环境和光影连贯。
 
 返回一个有效的 JSON 对象，包含对应镜头的视觉详情：
 {
   "details": [
     {
       "id": "number", // 对应输入的镜头序号
-      "aiImagePrompt": "string", // 极度细腻的英文或中文提示词
-      "aiVideoPrompt": "string", // 视频生成提示词
-      "audioEffects": "string" // 音效设计
+      "aiVideoPrompt": "string" // 视频生成提示词
     }
   ]
 }`;
