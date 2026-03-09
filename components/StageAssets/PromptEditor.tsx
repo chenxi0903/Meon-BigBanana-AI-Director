@@ -52,7 +52,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
                 onClick={onRegenerate}
                 disabled={isRegenerating}
                 className="text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors p-1 hover:bg-[var(--bg-hover)] rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                title={isRegenerating ? '正在生成提示词' : '重新生成角色提示词'}
+                title={isRegenerating ? '正在生成提示词' : `重新生成${label}`}
               >
                 {isRegenerating ? (
                   <Loader2 className="w-3 h-3 animate-spin" />

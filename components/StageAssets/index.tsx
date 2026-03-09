@@ -695,6 +695,35 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
     }
   };
 
+  const handleRegenerateScenePrompt = async (sceneId: string) => {
+    if (!await checkPromptsConnection()) return;
+
+    if (!project.scriptData) return;
+    const scene = project.scriptData.scenes.find(s => compareIds(s.id, sceneId));
+    if (!scene) return;
+
+    try {
+      setRegeneratingPromptMap((prev) => ({ ...prev, [sceneId]: true }));
+      const prompts = await generateVisualPrompts('scene', scene, genre, activeChatModelName, visualStyle, language);
+      const newData = { ...project.scriptData };
+      const target = newData.scenes.find(s => compareIds(s.id, sceneId));
+      if (target) {
+        target.visualPrompt = prompts.visualPrompt;
+        target.negativePrompt = prompts.negativePrompt;
+      }
+      updateProject({ scriptData: newData });
+      showAlert(`场景「${scene.location}」提示词已重新生成`, { type: 'success' });
+    } catch (e: any) {
+      console.error(e);
+      if (onApiKeyError && onApiKeyError(e)) {
+        return;
+      }
+      showAlert('重新生成场景提示词失败，请稍后重试', { type: 'error' });
+    } finally {
+      setRegeneratingPromptMap((prev) => ({ ...prev, [sceneId]: false }));
+    }
+  };
+
   /**
    * 更新场景基本信息
    */
@@ -1796,9 +1825,11 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 key={scene.id}
                 scene={scene}
                 isGenerating={scene.status === 'generating'}
+                isRegeneratingPrompt={!!regeneratingPromptMap[scene.id]}
                 onGenerate={() => handleStartGenerateAsset('scene', scene.id)}
                 onUpload={(file) => handleUploadSceneImage(scene.id, file)}
                 onPromptSave={(newPrompt) => handleSaveScenePrompt(scene.id, newPrompt)}
+                onRegeneratePrompt={() => handleRegenerateScenePrompt(scene.id)}
                 onImageClick={setPreviewImage}
                 onDelete={() => handleDeleteScene(scene.id)}
                 onUpdateInfo={(updates) => handleUpdateSceneInfo(scene.id, updates)}

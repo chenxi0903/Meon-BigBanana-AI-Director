@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Check, Sparkles, Loader2, Upload, Trash2, Edit2, AlertCircle, FolderPlus } from 'lucide-react';
+import { MapPin, Check, Loader2, Trash2, Edit2, AlertCircle, FolderPlus } from 'lucide-react';
 import PromptEditor from './PromptEditor';
 import ImageUploadButton from './ImageUploadButton';
 
@@ -10,10 +10,13 @@ interface SceneCardProps {
     time: string;
     atmosphere: string;
     visualPrompt?: string;
+    negativePrompt?: string;
     referenceImage?: string;
     status?: 'pending' | 'generating' | 'completed' | 'failed';
+    source?: 'generated' | 'reused';
   };
   isGenerating: boolean;
+  isRegeneratingPrompt?: boolean;
   onGenerate: () => void;
   onUpload: (file: File) => void;
   onPromptSave: (newPrompt: string) => void;
@@ -21,11 +24,13 @@ interface SceneCardProps {
   onDelete: () => void;
   onUpdateInfo: (updates: { location?: string; time?: string; atmosphere?: string }) => void;
   onAddToLibrary: () => void;
+  onRegeneratePrompt?: () => void;
 }
 
 const SceneCard: React.FC<SceneCardProps> = ({
   scene,
   isGenerating,
+  isRegeneratingPrompt = false,
   onGenerate,
   onUpload,
   onPromptSave,
@@ -33,6 +38,7 @@ const SceneCard: React.FC<SceneCardProps> = ({
   onDelete,
   onUpdateInfo,
   onAddToLibrary,
+  onRegeneratePrompt,
 }) => {
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [isEditingTime, setIsEditingTime] = useState(false);
@@ -198,6 +204,8 @@ const SceneCard: React.FC<SceneCardProps> = ({
             label="场景提示词"
             placeholder="输入场景视觉描述..."
             maxHeight="max-h-[160px]"
+            onRegenerate={onRegeneratePrompt}
+            isRegenerating={isRegeneratingPrompt}
           />
         </div>
 
