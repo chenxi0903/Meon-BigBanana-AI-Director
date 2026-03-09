@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, Save, AlertCircle, Camera, Sparkles, Loader2, Search, X } from 'lucide-react';
-import { chatCompletion } from '../../services/ai/apiCore';
+import { chatCompletion, cleanJsonString } from '../../services/ai/apiCore';
 import { getChatModels, isModelAvailable } from '../../services/modelRegistry';
 
 interface PromptEditorProps {
@@ -24,12 +24,18 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   isRegenerating = false,
   enableAudit = false,
 }) => {
+  type AuditReplacement = { from: string; to: string };
+
   const [isEditing, setIsEditing] = useState(false);
   const [editedPrompt, setEditedPrompt] = useState(prompt);
   const [isAuditOpen, setIsAuditOpen] = useState(false);
   const [selectedAuditModelId, setSelectedAuditModelId] = useState('');
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [auditSafe, setAuditSafe] = useState<boolean | null>(null);
+  const [auditOriginalPrompt, setAuditOriginalPrompt] = useState('');
+  const [auditResultPrompt, setAuditResultPrompt] = useState<string | null>(null);
+  const [auditReplacements, setAuditReplacements] = useState<AuditReplacement[]>([]);
 
   const handleStartEdit = () => {
     setIsEditing(true);
@@ -61,6 +67,10 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
 
   const handleOpenAudit = () => {
     setAuditError(null);
+    setAuditSafe(null);
+    setAuditOriginalPrompt('');
+    setAuditResultPrompt(null);
+    setAuditReplacements([]);
     setIsAuditOpen(true);
   };
 
@@ -68,6 +78,29 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
     if (isAuditing) return;
     setIsAuditOpen(false);
     setAuditError(null);
+    setAuditSafe(null);
+    setAuditOriginalPrompt('');
+    setAuditResultPrompt(null);
+    setAuditReplacements([]);
+  };
+
+  const deriveSingleReplacement = (before: string, after: string): AuditReplacement[] => {
+    const a = before || '';
+    const b = after || '';
+    if (a === b) return [];
+    const maxPrefix = Math.min(a.length, b.length);
+    let start = 0;
+    while (start < maxPrefix && a[start] === b[start]) start++;
+    let endA = a.length - 1;
+    let endB = b.length - 1;
+    while (endA >= start && endB >= start && a[endA] === b[endB]) {
+      endA--;
+      endB--;
+    }
+    const from = a.slice(start, endA + 1).trim();
+    const to = b.slice(start, endB + 1).trim();
+    if (!from && !to) return [];
+    return [{ from, to }];
   };
 
   const handleRunAudit = async () => {
@@ -83,16 +116,67 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
 
     setIsAuditing(true);
     setAuditError(null);
+    setAuditSafe(null);
     try {
-      const auditPrompt = `帮我完成细化和格式化。\n\n请审核以下角色提示词中是否包含敏感词汇，找寻后进行调整，并返回完整的替换后提示词（只返回提示词内容，不要附加解释）：\n\n${currentPrompt}`;
-      const result = await chatCompletion(auditPrompt, selectedAuditModelId, 0.2);
-      const cleaned = (result || '').trim();
-      if (!cleaned) {
+      setAuditOriginalPrompt(currentPrompt);
+      const auditPrompt = `你是提示词安全审核器。请检查输入提示词中是否包含敏感词汇；如有，请仅删除或替换为更安全的表达（不要进行细化/扩写/格式化，不要改变无关内容）。\n\n只输出 JSON：\n{\n  "safe": boolean,\n  "prompt": string,\n  "replacements": [{ "from": string, "to": string }]\n}\n\n规则：\n- 若无需修改：safe=true，prompt=原文，replacements=[]。\n- 若需要修改：safe=false，prompt=修改后的完整提示词。\n- replacements 只包含实际发生的替换/删除；删除时 to 为空字符串。\n- 不要输出除 JSON 以外的任何内容。\n\n输入提示词：\n${currentPrompt}`;
+      const result = await chatCompletion(auditPrompt, selectedAuditModelId, 0.2, 4096, 'json_object');
+      const raw = (result || '').trim();
+      if (!raw) {
         setAuditError('模型返回为空，请重试或更换模型。');
         return;
       }
+
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(cleanJsonString(raw));
+      } catch {
+        parsed = null;
+      }
+
+      if (parsed && typeof parsed === 'object') {
+        const revisedPrompt = String(parsed.prompt ?? '').trim();
+        const replacementsRaw = Array.isArray(parsed.replacements)
+          ? parsed.replacements
+          : Array.isArray(parsed.changes)
+            ? parsed.changes
+            : [];
+        const replacements: AuditReplacement[] = replacementsRaw
+          .map((r: any) => ({
+            from: String(r?.from ?? '').trim(),
+            to: String(r?.to ?? '').trim(),
+          }))
+          .filter((r: AuditReplacement) => !!r.from || !!r.to);
+        const safe = typeof parsed.safe === 'boolean'
+          ? parsed.safe
+          : (replacements.length === 0 && revisedPrompt === currentPrompt);
+
+        if (!revisedPrompt) {
+          setAuditError('模型返回解析失败，请重试或更换模型。');
+          return;
+        }
+
+        setAuditSafe(safe);
+        setAuditResultPrompt(revisedPrompt);
+        setAuditReplacements(replacements.length > 0 ? replacements : (safe ? [] : deriveSingleReplacement(currentPrompt, revisedPrompt)));
+
+        if (!safe && revisedPrompt !== currentPrompt) {
+          onSave(revisedPrompt);
+        }
+        return;
+      }
+
+      const cleaned = raw;
+      if (cleaned === currentPrompt) {
+        setAuditSafe(true);
+        setAuditResultPrompt(currentPrompt);
+        setAuditReplacements([]);
+        return;
+      }
+      setAuditSafe(false);
+      setAuditResultPrompt(cleaned);
+      setAuditReplacements(deriveSingleReplacement(currentPrompt, cleaned));
       onSave(cleaned);
-      setIsAuditOpen(false);
     } catch (e: any) {
       setAuditError(e?.message || '审核失败，请重试。');
     } finally {
@@ -245,6 +329,66 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
                 </div>
               )}
 
+              {auditSafe === true && (
+                <div className="text-xs text-[var(--success-text)] bg-[var(--success-bg)] border border-[var(--success-border)] rounded-lg px-3 py-2">
+                  提示词很安全
+                </div>
+              )}
+
+              {auditSafe === false && (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <div className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest">
+                      替换部分
+                    </div>
+                    {auditReplacements.length > 0 ? (
+                      <div className="space-y-1">
+                        {auditReplacements.map((r, idx) => (
+                          <div
+                            key={`${idx}-${r.from}-${r.to}`}
+                            className="text-[11px] text-[var(--text-tertiary)] font-mono bg-[var(--bg-deep)] border border-[var(--border-primary)] rounded px-2 py-1 whitespace-pre-wrap break-words"
+                          >
+                            {r.to ? (
+                              <>
+                                <span className="text-[var(--text-primary)]">{r.from}</span>
+                                <span className="mx-2 text-[var(--text-muted)]">→</span>
+                                <span className="text-[var(--accent-text)]">{r.to}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-[var(--text-primary)]">{r.from}</span>
+                                <span className="ml-2 text-[var(--text-muted)]">(已删除)</span>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-[var(--text-tertiary)]">
+                        已替换，但未返回可展示的替换明细。
+                      </div>
+                    )}
+                  </div>
+
+                  {auditResultPrompt && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest">
+                        替换后提示词
+                      </div>
+                      <div className="text-[11px] text-[var(--text-tertiary)] font-mono bg-[var(--nav-hover-bg)] border border-[var(--border-primary)] rounded-lg px-3 py-2 whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+                        {auditResultPrompt}
+                      </div>
+                    </div>
+                  )}
+
+                  {auditOriginalPrompt && auditResultPrompt && auditOriginalPrompt !== auditResultPrompt && (
+                    <div className="text-[10px] text-[var(--text-muted)] font-mono">
+                      已自动应用替换到当前提示词。
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <button
                   onClick={handleRunAudit}
@@ -259,7 +403,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
                   disabled={isAuditing}
                   className="flex-1 py-2 bg-[var(--bg-hover)] hover:bg-[var(--border-secondary)] text-[var(--text-secondary)] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  取消
+                  关闭
                 </button>
               </div>
             </div>
