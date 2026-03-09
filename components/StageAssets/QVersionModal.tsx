@@ -41,7 +41,7 @@ const QVersionModal: React.FC<QVersionModalProps> = ({
         <div className="flex items-center justify-between p-4 border-b border-[var(--border-primary)] bg-[var(--bg-surface)]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--accent)] border border-[var(--border-secondary)]">
-               <Grid3x3 className="w-6 h-6" />
+               <Wand2 className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-[var(--text-primary)]">Q版角色生成</h2>

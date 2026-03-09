@@ -250,7 +250,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
                   : 'bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] border-[var(--border-primary)]'
               }`}
             >
-              <SmilePlus className="w-3 h-3" />
+              <LayoutGrid className="w-3 h-3" />
               Q版生成
               {character.qVersion?.threeView?.status === 'completed' && (
                 <Check className="w-2.5 h-2.5" />
