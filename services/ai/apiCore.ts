@@ -278,7 +278,7 @@ export const chatCompletion = async (
     requestBody.reasoning_effort = resolved.params.reasoningEffort;
   }
 
-  if (responseFormat === 'json_object') {
+  if (responseFormat === 'json_object' && resolved?.providerId !== 'volcengine') {
     requestBody.response_format = { type: 'json_object' };
   }
 
@@ -383,7 +383,7 @@ export const chatCompletionStream = async (
     requestBody.reasoning_effort = resolved.params.reasoningEffort;
   }
 
-  if (responseFormat === 'json_object') {
+  if (responseFormat === 'json_object' && resolved?.providerId !== 'volcengine') {
     requestBody.response_format = { type: 'json_object' };
   }
 
