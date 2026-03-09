@@ -19,6 +19,19 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAlert } from '../GlobalAlert';
 import { getUserPrompts, saveUserPrompt, resetUserPrompt, getSystemPrompt, getAllSystemPrompts, loadSystemPrompts, setPromptOverrideCache, clearPromptOverrideCache } from '../../services/promptManager';
 
+const isDeprecatedPromptItem = (item: { title?: string; usage?: string }) => {
+  const title = item.title || '';
+  const usage = item.usage || '';
+  return (
+    title.includes('(Deprecated)') ||
+    title.includes('(Legacy)') ||
+    usage.includes('已过时') ||
+    usage.includes('已弃用') ||
+    usage.includes('已折叠') ||
+    usage.includes('仅供参考')
+  );
+};
+
 // 根据提供的真实业务结构重建的数据 
 const PROMPT_CATEGORIES = [ 
   { 
@@ -102,9 +115,19 @@ let cachedSystemPrompts: Record<string, string> | null = null;
 export default function PromptManager({ onClose }: PromptManagerProps) { 
   const { user } = useAuth();
   const { showAlert } = useAlert();
-  const allPrompts = PROMPT_CATEGORIES.flatMap(c => c.items); 
+  const deprecatedItems = PROMPT_CATEGORIES.flatMap(c => c.items.filter(isDeprecatedPromptItem));
+  const uiCategories = [
+    ...PROMPT_CATEGORIES.map(c => ({ ...c, items: c.items.filter(item => !isDeprecatedPromptItem(item)) })),
+    {
+      category: '已弃用',
+      icon: <RotateCcw className="w-4 h-4" />,
+      items: deprecatedItems,
+    },
+  ];
+  const allPrompts = uiCategories.flatMap(c => c.items); 
   const [selectedId, setSelectedId] = useState(allPrompts[0].id); 
   const activePrompt = allPrompts.find(p => p.id === selectedId) || allPrompts[0]; 
+  const [isDeprecatedOpen, setIsDeprecatedOpen] = useState(false);
 
   // User overrides from Supabase
   const [userPrompts, setUserPrompts] = useState<Record<string, string>>({});
@@ -239,7 +262,7 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
   // 导出全部提示词为 JSON 文件 
   const handleExportAll = () => { 
     // Merge user overrides into export data
-    const exportData = PROMPT_CATEGORIES.map(cat => ({
+    const exportData = uiCategories.map(cat => ({
       ...cat,
       items: cat.items.map(item => ({
         ...item,
@@ -324,16 +347,30 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
             
             {/* A: 左侧边栏 (面板选择) */} 
             <div className="w-[280px] shrink-0 flex flex-col bg-gray-50 dark:bg-[#121215] border-r border-gray-200 dark:border-gray-800 overflow-y-auto custom-scrollbar"> 
-              {PROMPT_CATEGORIES.map((category, catIdx) => ( 
+              {uiCategories.map((category, catIdx) => ( 
                 <div key={catIdx} className="mb-4"> 
                   {/* 分类标题 */} 
-                  <div className="flex items-center gap-2 px-6 py-3 text-gray-500 dark:text-gray-400 sticky top-0 bg-gray-50 dark:bg-[#121215] z-10"> 
-                    {category.icon} 
-                    <span className="text-[13px] font-bold tracking-wider">{category.category}</span> 
-                  </div> 
+                  {category.category === '已弃用' ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsDeprecatedOpen(v => !v)}
+                      className="w-full flex items-center justify-between px-6 py-3 text-gray-500 dark:text-gray-400 sticky top-0 bg-gray-50 dark:bg-[#121215] z-10"
+                    >
+                      <span className="flex items-center gap-2">
+                        {category.icon}
+                        <span className="text-[13px] font-bold tracking-wider">已弃用</span>
+                      </span>
+                      <span className={`text-[12px] transition-transform ${isDeprecatedOpen ? 'rotate-180' : ''}`}>▾</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 px-6 py-3 text-gray-500 dark:text-gray-400 sticky top-0 bg-gray-50 dark:bg-[#121215] z-10"> 
+                      {category.icon} 
+                      <span className="text-[13px] font-bold tracking-wider">{category.category}</span> 
+                    </div>
+                  )}
                   
                   {/* 提示词列表 */} 
-                  <div className="flex flex-col"> 
+                  <div className={`flex flex-col ${category.category === '已弃用' && !isDeprecatedOpen ? 'hidden' : ''}`}> 
                     {category.items.map((item) => { 
                       const isActive = selectedId === item.id; 
                       const isCustomized = !!userPrompts[item.id];
