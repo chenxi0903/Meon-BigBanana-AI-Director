@@ -310,6 +310,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
             placeholder="输入角色的视觉描述..."
             onRegenerate={onRegeneratePrompt}
             isRegenerating={isRegeneratingPrompt}
+            enableAudit={true}
           />
         </div>
 
