@@ -103,7 +103,7 @@ const callJimengTextToImage = async (
 ): Promise<string> => {
   const apiModel = model.apiModel || model.id;
   const ratio = mapAspectRatioToJimeng(options.aspectRatio || model.params.defaultAspectRatio);
-  const resolution = model.params.resolution;
+  const resolution = options.resolution || model.params.resolution;
 
   // Truncate prompt if too long (Jimeng has 800 char limit)
   let finalPrompt = options.prompt;
@@ -186,7 +186,7 @@ const callJimengImageToImage = async (
 ): Promise<string> => {
   const apiModel = model.apiModel || model.id;
   const ratio = mapAspectRatioToJimeng(options.aspectRatio || model.params.defaultAspectRatio);
-  const resolution = model.params.resolution;
+  const resolution = options.resolution || model.params.resolution;
   const referenceImages = options.referenceImages || [];
 
   // Truncate prompt if too long (Jimeng has 800 char limit)

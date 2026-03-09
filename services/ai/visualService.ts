@@ -278,7 +278,8 @@ export const generateImage = async (
   aspectRatio: AspectRatio = '16:9',
   isVariation: boolean = false,
   hasTurnaround: boolean = false,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  resolution?: '1k' | '2k' | '4k'
 ): Promise<string> => {
   const startTime = Date.now();
 
@@ -293,6 +294,7 @@ export const generateImage = async (
           prompt,
           referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
           aspectRatio,
+          resolution,
           signal,
         },
         activeImageModel as ImageModelDefinition
@@ -341,6 +343,7 @@ export const generateImage = async (
         prompt: finalPrompt,
         referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
         aspectRatio,
+        resolution,
         signal,
       },
       activeImageModel as ImageModelDefinition | undefined
@@ -584,7 +587,7 @@ export const generateCharacterQVersionThreeViewImage = async (
 
   try {
     // 使用 16:9 比例生成三视图
-    const imageUrl = await generateImage(prompt, referenceImages, '16:9', false, false, signal);
+    const imageUrl = await generateImage(prompt, referenceImages, '16:9', false, false, signal, '2k');
     console.log(`✅ 角色 ${character.name} Q 版三视图生成完成`);
     logScriptProgress(`角色「${character.name}」 Q 版三视图生成完成`);
     return imageUrl;
@@ -615,7 +618,7 @@ export const generateCharacterQVersionEmotionGridImage = async (
 
   try {
     // 使用 1:1 比例生成九宫格
-    const imageUrl = await generateImage(prompt, referenceImages, '1:1', false, false, signal);
+    const imageUrl = await generateImage(prompt, referenceImages, '1:1', false, false, signal, '2k');
     console.log(`✅ 角色 ${character.name} Q 版情绪九宫格生成完成`);
     logScriptProgress(`角色「${character.name}」 Q 版情绪九宫格生成完成`);
     return imageUrl;
