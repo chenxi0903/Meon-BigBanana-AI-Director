@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Loader2, Smile, Grid3x3, ArrowRight, Image as ImageIcon, Wand2 } from 'lucide-react';
+import { ArrowRight, Grid3x3, Image as ImageIcon, Loader2, Smile, Wand2, X } from 'lucide-react';
 import { Character } from '../../types';
 import { buildQVersionThreeViewPrompt, buildQVersionEmotionGridPrompt } from '../../services/ai/prompts';
 
