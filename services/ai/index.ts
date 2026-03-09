@@ -63,6 +63,8 @@ export {
   CHARACTER_TURNAROUND_LAYOUT,
   generateCharacterTurnaroundPanels,
   generateCharacterTurnaroundImage,
+  generateCharacterQVersionThreeViewImage,
+  generateCharacterQVersionEmotionGridImage,
 } from './visualService';
 
 // 视频生成服务
