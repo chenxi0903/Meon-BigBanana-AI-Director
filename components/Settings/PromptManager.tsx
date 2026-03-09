@@ -63,6 +63,7 @@ const PROMPT_CATEGORIES = [
       { id: 'buildNineGridImagePrompt', title: '九宫格图像提示词', type: 'Prompt', isDefault: true, usage: '把 9 个视角拼成单张 3x3 九宫格图像的生成提示词。', content: 'Create a single image generation prompt that produces a 3x3 comic-style layout containing...' }, 
       { id: 'buildTurnaroundPanelPrompt', title: '角色转身板描述', type: 'Prompt', isDefault: true, usage: '生成角色 9 宫格转身板（角色一致性用）。', content: 'Generate a turnaround character sheet description covering 9 distinct angles (front, 3/4, side, back, etc.)...' }, 
       { id: 'buildTurnaroundImagePrompt', title: '转身板图像提示词', type: 'Prompt', isDefault: true, usage: '将转身板面板描述生成单张 3x3 图像的提示词。', content: 'Produce a visual prompt for a 3x3 character turnaround reference sheet, maintaining absolute consistency...' }, 
+      { id: 'buildQVersionEmotionsPrompt', title: 'Q版情绪九宫格', type: 'Prompt', isDefault: true, usage: '基于Q版三视图生成9个表情包。', content: '以参考图中的 Q 版三视图角色为基础，生成一套 9 个的 Q 版表情包，排成 3x3 网格。每个表情都是同一个角色，保持原有的发型、服饰和画风，只改变面部表情和情绪符号，包括：\n\n1. 害羞脸红冒汗\n2. 愤怒冒火\n3. 疑惑问号\n4. 花痴爱心眼\n5. 黑化暴走\n6. 大哭流泪\n7. 流汗无语\n8. 惊讶张嘴\n9. 怒吼咆哮整体\n\n风格为可爱的卡通插画，每个表情都有夸张的动作和符号化元素，背景为纯白色。' },
     ] 
   }, 
   { 
@@ -86,6 +87,7 @@ const PROMPT_CATEGORIES = [
       { id: 'buildOutfitVariationPrompt', title: '角色换装版本', type: 'Prompt', isDefault: true, usage: '基于角色提示词生成换装版本。', content: 'Keep the character face and body strictly consistent, but change their outfit to match the new description...' }, 
       { id: 'buildConsistencyPrompt', title: '角色一致性控制', type: 'Prompt', isDefault: true, usage: '生成角色一致性控制提示词。', content: 'Apply strict consistency tokens to ensure the character remains identical across multiple seed variations...' }, 
       { id: 'buildThreeViewPrompt', title: '三视图提示词', type: 'Prompt', isDefault: true, usage: '生成角色三视图设计表（正面/侧面/背面）用于角色一致性参考。', content: '角色设计表，三视图（正面，侧面，背面），全身人像，九头身完美比例。左侧排列高清特写大头照。' },
+      { id: 'buildQVersionThreeViewPrompt', title: 'Q版三视图生成', type: 'Prompt', isDefault: true, usage: '生成Q版角色的三视图（正面/侧面/背面）。', content: '请将我发送给你的参考图生成为Q版角色的三视图样式，保留角色的主要特征（如发型、衣服、配饰、肤色等）。角色的外形要更加夸张可爱，头部相对较大，眼睛大而亮，身体比例缩小，整体显得更加卡通化和萌趣。请提供角色的正面、侧面和背面三视图，确保每个角度都能准确展示角色的标志性特征和个性细节' },
     ] 
   } 
 ];

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Check, Shirt, Trash2, Edit2, AlertCircle, FolderPlus, Grid3x3, LayoutGrid, Loader2 } from 'lucide-react';
+import { User, Check, Shirt, Trash2, Edit2, AlertCircle, FolderPlus, Grid3x3, LayoutGrid, Loader2, Wand2 } from 'lucide-react';
 import { Character } from '../../types';
 import PromptEditor from './PromptEditor';
 import ImageUploadButton from './ImageUploadButton';
@@ -13,6 +13,7 @@ interface CharacterCardProps {
   onUpload: (file: File) => void;
   onPromptSave: (newPrompt: string) => void;
   onOpenWardrobe: () => void;
+  onOpenQVersion: () => void;
   onOpenTurnaround: () => void;
   onOpenThreeView: () => void;
   onImageClick: (imageUrl: string) => void;
@@ -32,6 +33,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
   onUpload,
   onPromptSave,
   onOpenWardrobe,
+  onOpenQVersion,
   onOpenTurnaround,
   onOpenThreeView,
   onImageClick,
@@ -238,6 +240,23 @@ const CharacterCard: React.FC<CharacterCardProps> = ({
                 )}
               </button>
             </div>
+
+            {/* Q-Version Button */}
+            <button 
+              onClick={onOpenQVersion}
+              disabled={!character.referenceImage}
+              className={`w-full py-1.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                character.qVersion?.threeView?.status === 'completed' || character.qVersion?.emotions?.status === 'completed'
+                  ? 'bg-[var(--accent-bg)] hover:bg-[var(--accent-hover-bg)] text-[var(--accent-text)] border-[var(--accent-border)]'
+                  : 'bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] border-[var(--border-primary)]'
+              }`}
+            >
+              <Wand2 className="w-3 h-3" />
+              Q版生成
+              {(character.qVersion?.threeView?.status === 'completed' || character.qVersion?.emotions?.status === 'completed') && (
+                <Check className="w-2.5 h-2.5" />
+              )}
+            </button>
 
             {/* Turnaround Sheet Button */}
             <button 

@@ -38,6 +38,19 @@ export interface CharacterThreeViewData {
   status: 'pending' | 'generating' | 'completed' | 'failed';
 }
 
+export interface CharacterQVersionData {
+  threeView?: {
+    imageUrl?: string;
+    prompt?: string;
+    status: 'pending' | 'generating' | 'completed' | 'failed';
+  };
+  emotions?: {
+    imageUrl?: string;
+    prompt?: string;
+    status: 'pending' | 'generating' | 'completed' | 'failed';
+  };
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -50,6 +63,7 @@ export interface Character {
   referenceImage?: string; // 角色基础参考图，存储为base64格式（data:image/png;base64,...）
   turnaround?: CharacterTurnaroundData; // 角色九宫格造型设计，多视角参考图
   threeView?: CharacterThreeViewData; // 角色三视图设计图
+  qVersion?: CharacterQVersionData; // Q版角色数据
   variations: CharacterVariation[]; // Added: List of alternative looks
   status?: 'pending' | 'generating' | 'completed' | 'failed'; // 生成状态，用于loading状态持久化
   source?: 'generated' | 'reused'; // 来源标识：生成的还是复用的

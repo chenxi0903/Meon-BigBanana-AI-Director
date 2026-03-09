@@ -31,7 +31,9 @@ import {
   buildConsistencyPrompt,
   buildThreeViewPrompt,
   buildTurnaroundPanelPrompt,
-  buildTurnaroundImagePrompt
+  buildTurnaroundImagePrompt,
+  buildQVersionThreeViewPrompt,
+  buildQVersionEmotionsPrompt
 } from './prompts';
 
 // ============================================
@@ -559,6 +561,79 @@ export const generateCharacterTurnaroundImage = async (
   } catch (error: any) {
     console.error(`❌ 角色 ${character.name} 九宫格造型图片生成失败:`, error);
     logScriptProgress(`角色「${character.name}」九宫格造型图片生成失败`);
+    throw error;
+  }
+};
+
+// ============================================
+// Q版角色生成 (Q-Version Character Generation)
+// ============================================
+
+export const generateQVersionThreeView = async (
+  character: Character,
+  signal?: AbortSignal
+): Promise<string> => {
+  console.log(`🧸 generateQVersionThreeView - 为角色 ${character.name} 生成Q版三视图`);
+  logScriptProgress(`正在为角色「${character.name}」生成Q版三视图...`);
+
+  if (!character.referenceImage) {
+    throw new Error('Q版三视图生成需要先有角色参考图');
+  }
+  
+  const prompt = buildQVersionThreeViewPrompt();
+  
+  try {
+    // 使用 16:9 比例生成三视图
+    const imageUrl = await generateImage(
+      prompt,
+      [character.referenceImage],
+      '16:9',
+      false,
+      false,
+      signal
+    );
+    
+    console.log(`✅ 角色 ${character.name} Q版三视图生成完成`);
+    logScriptProgress(`角色「${character.name}」Q版三视图生成完成`);
+    return imageUrl;
+  } catch (error: any) {
+    console.error(`❌ 角色 ${character.name} Q版三视图生成失败:`, error);
+    logScriptProgress(`角色「${character.name}」Q版三视图生成失败`);
+    throw error;
+  }
+};
+
+export const generateQVersionEmotions = async (
+  characterName: string,
+  qVersionThreeViewImage: string,
+  signal?: AbortSignal
+): Promise<string> => {
+  console.log(`🤪 generateQVersionEmotions - 为角色 ${characterName} 生成Q版表情包`);
+  logScriptProgress(`正在为角色「${characterName}」生成Q版表情包...`);
+
+  if (!qVersionThreeViewImage) {
+    throw new Error('Q版表情包生成需要先有Q版三视图');
+  }
+  
+  const prompt = buildQVersionEmotionsPrompt();
+  
+  try {
+    // 使用 1:1 比例生成九宫格表情包
+    const imageUrl = await generateImage(
+      prompt,
+      [qVersionThreeViewImage],
+      '1:1',
+      false,
+      false,
+      signal
+    );
+    
+    console.log(`✅ 角色 ${characterName} Q版表情包生成完成`);
+    logScriptProgress(`角色「${characterName}」Q版表情包生成完成`);
+    return imageUrl;
+  } catch (error: any) {
+    console.error(`❌ 角色 ${characterName} Q版表情包生成失败:`, error);
+    logScriptProgress(`角色「${characterName}」Q版表情包生成失败`);
     throw error;
   }
 };
