@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, Sparkles, RefreshCw, Loader2, MapPin, Archive, X, Search, Trash2, Package } from 'lucide-react';
 import { ProjectState, CharacterVariation, Character, Scene, Prop, AspectRatio, AssetLibraryItem, CharacterTurnaroundPanel } from '../../types';
-import { generateImage, generateVisualPrompts, generateCharacterTurnaroundPanels, generateCharacterTurnaroundImage, generateCharacterThreeViewImage, generateQVersionThreeView, generateQVersionEmotions } from '../../services/aiService';
+import { generateImage, generateVisualPrompts, generateCharacterTurnaroundPanels, 
+  generateCharacterTurnaroundImage, 
+  generateCharacterThreeViewImage,
+  generateCharacterQVersionThreeViewImage,
+  generateCharacterQVersionEmotionGridImage
+} from '../../services/aiService';
 import { 
   getRegionalPrefix, 
   handleImageUpload, 
@@ -48,8 +53,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   const [libraryProjectFilter, setLibraryProjectFilter] = useState('all');
   const [replaceTargetCharId, setReplaceTargetCharId] = useState<string | null>(null);
   const [turnaroundCharId, setTurnaroundCharId] = useState<string | null>(null);
-  const [qVersionCharId, setQVersionCharId] = useState<string | null>(null);
   const [threeViewCharId, setThreeViewCharId] = useState<string | null>(null);
+  const [qVersionCharId, setQVersionCharId] = useState<string | null>(null);
   const [threeViewModelId, setThreeViewModelId] = useState<string>('');
   const [regeneratingPromptMap, setRegeneratingPromptMap] = useState<Record<string, boolean>>({});
   const generationControllersRef = useRef<Record<string, AbortController>>({});
@@ -1301,111 +1306,61 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
   // Q版生成相关处理函数
   // ============================
 
-  const handleGenerateQVersionThreeView = async (charId: string) => {
-    if (!await checkPromptsConnection()) return;
+  const setQVersionState = (charId: string, type: 'threeView' | 'emotionGrid', updates: Partial<any>) => {
+    updateProject((prev) => {
+      if (!prev.scriptData) return prev;
+      const newData = { ...prev.scriptData };
+      const c = newData.characters.find(c => compareIds(c.id, charId));
+      if (!c) return prev;
+      
+      if (!c.qVersion) c.qVersion = {};
+      const current = c.qVersion[type] || { status: 'pending' };
+      c.qVersion[type] = { ...current, ...updates };
+      
+      return { ...prev, scriptData: newData };
+    });
+  };
+
+  const handleGenerateQVersionThreeView = async (charId: string, prompt: string) => {
     const char = project.scriptData?.characters.find(c => compareIds(c.id, charId));
     if (!char) return;
 
-    // Set status to generating
-    updateProject((prev) => {
-      if (!prev.scriptData) return prev;
-      const newData = { ...prev.scriptData };
-      const c = newData.characters.find(c => compareIds(c.id, charId));
-      if (c) {
-        c.qVersion = {
-          ...c.qVersion,
-          threeView: { ...c.qVersion?.threeView, status: 'generating' }
-        };
-      }
-      return { ...prev, scriptData: newData };
-    });
-
-    try {
-      const key = `qversion:threeview:${charId}`;
-      await startCancellableTask(key, async (signal) => {
-        const imageUrl = await generateQVersionThreeView(char, signal);
+    await startCancellableTask(`qversion:threeview:${charId}`, async (signal) => {
+      setQVersionState(charId, 'threeView', { status: 'generating', imageUrl: undefined, prompt });
+      try {
+        const imageUrl = await generateCharacterQVersionThreeViewImage(char, signal);
         if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-
-        updateProject((prev) => {
-          if (!prev.scriptData) return prev;
-          const newData = { ...prev.scriptData };
-          const c = newData.characters.find(c => compareIds(c.id, charId));
-          if (c && c.qVersion) {
-            c.qVersion.threeView = {
-              imageUrl,
-              status: 'completed'
-            };
-          }
-          return { ...prev, scriptData: newData };
-        });
-      });
-    } catch (e: any) {
-      console.error('Q版三视图生成失败:', e);
-      if (isAbortError(e)) return;
-      updateProject((prev) => {
-        if (!prev.scriptData) return prev;
-        const newData = { ...prev.scriptData };
-        const c = newData.characters.find(c => compareIds(c.id, charId));
-        if (c && c.qVersion?.threeView) {
-          c.qVersion.threeView.status = 'failed';
-        }
-        return { ...prev, scriptData: newData };
-      });
-      if (onApiKeyError && onApiKeyError(e)) return;
-      showAlert('Q版三视图生成失败', { type: 'error' });
-    }
+        setQVersionState(charId, 'threeView', { status: 'completed', imageUrl, prompt });
+        setPreviewImage(imageUrl);
+        showAlert('Q版三视图生成完成', { type: 'success' });
+      } catch (e: any) {
+        if (isAbortError(e)) return;
+        console.error('Q版三视图生成失败', e);
+        setQVersionState(charId, 'threeView', { status: 'failed' });
+        showAlert(e?.message || 'Q版三视图生成失败', { type: 'error' });
+      }
+    });
   };
 
-  const handleGenerateQVersionEmotions = async (charId: string) => {
-    if (!await checkPromptsConnection()) return;
+  const handleGenerateQVersionEmotionGrid = async (charId: string, prompt: string) => {
     const char = project.scriptData?.characters.find(c => compareIds(c.id, charId));
-    if (!char || !char.qVersion?.threeView?.imageUrl) return;
+    if (!char) return;
 
-    // Set status to generating
-    updateProject((prev) => {
-      if (!prev.scriptData) return prev;
-      const newData = { ...prev.scriptData };
-      const c = newData.characters.find(c => compareIds(c.id, charId));
-      if (c && c.qVersion) {
-        c.qVersion.emotions = { ...c.qVersion.emotions, status: 'generating' };
-      }
-      return { ...prev, scriptData: newData };
-    });
-
-    try {
-      const key = `qversion:emotions:${charId}`;
-      await startCancellableTask(key, async (signal) => {
-        const imageUrl = await generateQVersionEmotions(char.name, char.qVersion!.threeView!.imageUrl!, signal);
+    await startCancellableTask(`qversion:emotiongrid:${charId}`, async (signal) => {
+      setQVersionState(charId, 'emotionGrid', { status: 'generating', imageUrl: undefined, prompt });
+      try {
+        const imageUrl = await generateCharacterQVersionEmotionGridImage(char, signal);
         if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-
-        updateProject((prev) => {
-          if (!prev.scriptData) return prev;
-          const newData = { ...prev.scriptData };
-          const c = newData.characters.find(c => compareIds(c.id, charId));
-          if (c && c.qVersion) {
-            c.qVersion.emotions = {
-              imageUrl,
-              status: 'completed'
-            };
-          }
-          return { ...prev, scriptData: newData };
-        });
-      });
-    } catch (e: any) {
-      console.error('Q版表情包生成失败:', e);
-      if (isAbortError(e)) return;
-      updateProject((prev) => {
-        if (!prev.scriptData) return prev;
-        const newData = { ...prev.scriptData };
-        const c = newData.characters.find(c => compareIds(c.id, charId));
-        if (c && c.qVersion?.emotions) {
-          c.qVersion.emotions.status = 'failed';
-        }
-        return { ...prev, scriptData: newData };
-      });
-      if (onApiKeyError && onApiKeyError(e)) return;
-      showAlert('Q版表情包生成失败', { type: 'error' });
-    }
+        setQVersionState(charId, 'emotionGrid', { status: 'completed', imageUrl, prompt });
+        setPreviewImage(imageUrl);
+        showAlert('Q版情绪九宫格生成完成', { type: 'success' });
+      } catch (e: any) {
+        if (isAbortError(e)) return;
+        console.error('Q版情绪九宫格生成失败', e);
+        setQVersionState(charId, 'emotionGrid', { status: 'failed' });
+        showAlert(e?.message || 'Q版情绪九宫格生成失败', { type: 'error' });
+      }
+    });
   };
 
   // 空状态
@@ -1494,20 +1449,6 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
         ) : null;
       })()}
 
-      {/* QVersion Modal */}
-      {qVersionCharId && (() => {
-        const char = project.scriptData?.characters.find(c => compareIds(c.id, qVersionCharId));
-        return char ? (
-          <QVersionModal
-            character={char}
-            onClose={() => setQVersionCharId(null)}
-            onGenerateThreeView={handleGenerateQVersionThreeView}
-            onGenerateEmotions={handleGenerateQVersionEmotions}
-            onImageClick={setPreviewImage}
-          />
-        ) : null;
-      })()}
-
       {/* Three View Modal */}
       {threeViewCharId && (() => {
         const threeViewChar = project.scriptData?.characters.find(c => compareIds(c.id, threeViewCharId));
@@ -1528,6 +1469,20 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
             onImageClick={setPreviewImage}
           />
         );
+      })()}
+
+      {/* Q Version Modal */}
+      {qVersionCharId && (() => {
+        const qVersionChar = project.scriptData?.characters.find(c => compareIds(c.id, qVersionCharId));
+        return qVersionChar ? (
+          <QVersionModal
+            character={qVersionChar}
+            onClose={() => setQVersionCharId(null)}
+            onGenerateThreeView={handleGenerateQVersionThreeView}
+            onGenerateEmotionGrid={handleGenerateQVersionEmotionGrid}
+            onImageClick={setPreviewImage}
+          />
+        ) : null;
       })()}
 
       {/* Asset Library Modal */}
@@ -1783,9 +1738,9 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
                 onUpload={(file) => handleUploadCharacterImage(char.id, file)}
                 onPromptSave={(newPrompt) => handleSaveCharacterPrompt(char.id, newPrompt)}
                 onOpenWardrobe={() => setSelectedCharId(char.id)}
-                onOpenQVersion={() => setQVersionCharId(char.id)}
                 onOpenTurnaround={() => setTurnaroundCharId(char.id)}
                 onOpenThreeView={() => handleOpenThreeView(char.id)}
+                onOpenQVersion={() => setQVersionCharId(char.id)}
                 onImageClick={setPreviewImage}
                 onDelete={() => handleDeleteCharacter(char.id)}
                 onUpdateInfo={(updates) => handleUpdateCharacterInfo(char.id, updates)}

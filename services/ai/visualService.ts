@@ -33,7 +33,7 @@ import {
   buildTurnaroundPanelPrompt,
   buildTurnaroundImagePrompt,
   buildQVersionThreeViewPrompt,
-  buildQVersionEmotionsPrompt
+  buildQVersionEmotionGridPrompt
 } from './prompts';
 
 // ============================================
@@ -565,75 +565,63 @@ export const generateCharacterTurnaroundImage = async (
   }
 };
 
-// ============================================
-// Q版角色生成 (Q-Version Character Generation)
-// ============================================
-
-export const generateQVersionThreeView = async (
+/**
+ * 生成 Q 版角色三视图图片
+ */
+export const generateCharacterQVersionThreeViewImage = async (
   character: Character,
   signal?: AbortSignal
 ): Promise<string> => {
-  console.log(`🧸 generateQVersionThreeView - 为角色 ${character.name} 生成Q版三视图`);
-  logScriptProgress(`正在为角色「${character.name}」生成Q版三视图...`);
+  console.log(`🖼️ generateCharacterQVersionThreeViewImage - 为角色 ${character.name} 生成 Q 版三视图`);
+  logScriptProgress(`正在为角色「${character.name}」生成 Q 版三视图...`);
 
   if (!character.referenceImage) {
-    throw new Error('Q版三视图生成需要先有角色参考图');
+    throw new Error('Q版生成需要先有角色参考图');
   }
-  
+
   const prompt = buildQVersionThreeViewPrompt();
-  
+  const referenceImages = [character.referenceImage];
+
   try {
     // 使用 16:9 比例生成三视图
-    const imageUrl = await generateImage(
-      prompt,
-      [character.referenceImage],
-      '16:9',
-      false,
-      false,
-      signal
-    );
-    
-    console.log(`✅ 角色 ${character.name} Q版三视图生成完成`);
-    logScriptProgress(`角色「${character.name}」Q版三视图生成完成`);
+    const imageUrl = await generateImage(prompt, referenceImages, '16:9', false, false, signal);
+    console.log(`✅ 角色 ${character.name} Q 版三视图生成完成`);
+    logScriptProgress(`角色「${character.name}」 Q 版三视图生成完成`);
     return imageUrl;
   } catch (error: any) {
-    console.error(`❌ 角色 ${character.name} Q版三视图生成失败:`, error);
-    logScriptProgress(`角色「${character.name}」Q版三视图生成失败`);
+    console.error(`❌ 角色 ${character.name} Q 版三视图生成失败:`, error);
+    logScriptProgress(`角色「${character.name}」 Q 版三视图生成失败`);
     throw error;
   }
 };
 
-export const generateQVersionEmotions = async (
-  characterName: string,
-  qVersionThreeViewImage: string,
+/**
+ * 生成 Q 版角色情绪九宫格图片
+ */
+export const generateCharacterQVersionEmotionGridImage = async (
+  character: Character,
   signal?: AbortSignal
 ): Promise<string> => {
-  console.log(`🤪 generateQVersionEmotions - 为角色 ${characterName} 生成Q版表情包`);
-  logScriptProgress(`正在为角色「${characterName}」生成Q版表情包...`);
+  console.log(`🖼️ generateCharacterQVersionEmotionGridImage - 为角色 ${character.name} 生成 Q 版情绪九宫格`);
+  logScriptProgress(`正在为角色「${character.name}」生成 Q 版情绪九宫格...`);
 
-  if (!qVersionThreeViewImage) {
-    throw new Error('Q版表情包生成需要先有Q版三视图');
+  const qThreeView = character.qVersion?.threeView?.imageUrl;
+  if (!qThreeView) {
+    throw new Error('情绪九宫格生成需要先完成 Q 版三视图生成');
   }
-  
-  const prompt = buildQVersionEmotionsPrompt();
-  
+
+  const prompt = buildQVersionEmotionGridPrompt();
+  const referenceImages = [qThreeView];
+
   try {
-    // 使用 1:1 比例生成九宫格表情包
-    const imageUrl = await generateImage(
-      prompt,
-      [qVersionThreeViewImage],
-      '1:1',
-      false,
-      false,
-      signal
-    );
-    
-    console.log(`✅ 角色 ${characterName} Q版表情包生成完成`);
-    logScriptProgress(`角色「${characterName}」Q版表情包生成完成`);
+    // 使用 1:1 比例生成九宫格
+    const imageUrl = await generateImage(prompt, referenceImages, '1:1', false, false, signal);
+    console.log(`✅ 角色 ${character.name} Q 版情绪九宫格生成完成`);
+    logScriptProgress(`角色「${character.name}」 Q 版情绪九宫格生成完成`);
     return imageUrl;
   } catch (error: any) {
-    console.error(`❌ 角色 ${characterName} Q版表情包生成失败:`, error);
-    logScriptProgress(`角色「${characterName}」Q版表情包生成失败`);
+    console.error(`❌ 角色 ${character.name} Q 版情绪九宫格生成失败:`, error);
+    logScriptProgress(`角色「${character.name}」 Q 版情绪九宫格生成失败`);
     throw error;
   }
 };

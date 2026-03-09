@@ -1552,9 +1552,8 @@ export const buildQVersionThreeViewPrompt = (): string => {
   return applyTemplate(template, {});
 };
 
-export const buildQVersionEmotionsPrompt = (): string => {
+export const buildQVersionEmotionGridPrompt = (): string => {
   const fallback = `以参考图中的 Q 版三视图角色为基础，生成一套 9 个的 Q 版表情包，排成 3x3 网格。每个表情都是同一个角色，保持原有的发型、服饰和画风，只改变面部表情和情绪符号，包括：
-
 1. 害羞脸红冒汗
 2. 愤怒冒火
 3. 疑惑问号
@@ -1564,8 +1563,7 @@ export const buildQVersionEmotionsPrompt = (): string => {
 7. 流汗无语
 8. 惊讶张嘴
 9. 怒吼咆哮整体
-
 风格为可爱的卡通插画，每个表情都有夸张的动作和符号化元素，背景为纯白色。`;
-  const template = getEffectivePrompt('buildQVersionEmotionsPrompt', fallback);
+  const template = getEffectivePrompt('buildQVersionEmotionGridPrompt', fallback);
   return applyTemplate(template, {});
 };

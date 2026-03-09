@@ -1,13 +1,13 @@
-
-import React from 'react';
-import { X, Loader2, ImagePlus, Grid3x3, LayoutGrid, AlertCircle, Wand2, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Loader2, Smile, Grid3x3, ArrowRight, Image as ImageIcon, Wand2 } from 'lucide-react';
 import { Character } from '../../types';
+import { buildQVersionThreeViewPrompt, buildQVersionEmotionGridPrompt } from '../../services/ai/prompts';
 
 interface QVersionModalProps {
   character: Character;
   onClose: () => void;
-  onGenerateThreeView: (charId: string) => void;
-  onGenerateEmotions: (charId: string) => void;
+  onGenerateThreeView: (charId: string, prompt: string) => void;
+  onGenerateEmotionGrid: (charId: string, prompt: string) => void;
   onImageClick: (imageUrl: string) => void;
 }
 
@@ -15,181 +15,211 @@ const QVersionModal: React.FC<QVersionModalProps> = ({
   character,
   onClose,
   onGenerateThreeView,
-  onGenerateEmotions,
+  onGenerateEmotionGrid,
   onImageClick,
 }) => {
-  const threeView = character.qVersion?.threeView;
-  const emotions = character.qVersion?.emotions;
+  const [activeTab, setActiveTab] = useState<'three-view' | 'emotion-grid'>('three-view');
+  const [threeViewPrompt, setThreeViewPrompt] = useState(buildQVersionThreeViewPrompt());
+  const [emotionGridPrompt, setEmotionGridPrompt] = useState(buildQVersionEmotionGridPrompt());
 
-  const isThreeViewGenerating = threeView?.status === 'generating';
-  const isEmotionsGenerating = emotions?.status === 'generating';
-  
-  const hasThreeView = threeView?.status === 'completed' && threeView.imageUrl;
-  const hasEmotions = emotions?.status === 'completed' && emotions.imageUrl;
+  const qVersion = character.qVersion;
+  const threeViewStatus = qVersion?.threeView?.status || 'pending';
+  const emotionGridStatus = qVersion?.emotionGrid?.status || 'pending';
 
-  const threeViewFailed = threeView?.status === 'failed';
-  const emotionsFailed = emotions?.status === 'failed';
+  const isThreeViewGenerating = threeViewStatus === 'generating';
+  const isEmotionGridGenerating = emotionGridStatus === 'generating';
+  const isThreeViewCompleted = threeViewStatus === 'completed' && qVersion?.threeView?.imageUrl;
+  const isEmotionGridCompleted = emotionGridStatus === 'completed' && qVersion?.emotionGrid?.imageUrl;
 
   return (
-    <div
-      className="absolute inset-0 z-40 bg-[var(--bg-base)]/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="bg-[var(--bg-elevated)] border border-[var(--border-secondary)] rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+      <div 
+        className="bg-[var(--bg-elevated)] border border-[var(--border-secondary)] rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="h-14 px-6 border-b border-[var(--border-primary)] flex items-center justify-between bg-[var(--bg-surface)] shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-primary)] bg-[var(--bg-surface)]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[var(--bg-hover)] overflow-hidden border border-[var(--border-secondary)]">
-              {character.referenceImage && (
-                <img src={character.referenceImage} className="w-full h-full object-cover" alt={character.name} />
-              )}
+            <div className="w-10 h-10 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--accent)] border border-[var(--border-secondary)]">
+               <Smile className="w-6 h-6" />
             </div>
-            <div className="flex items-center gap-2">
-              <Wand2 className="w-4 h-4 text-[var(--accent-text)]" />
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                {character.name} - Q版生成
-              </h3>
+            <div>
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">Q版角色生成</h2>
+              <p className="text-xs text-[var(--text-tertiary)]">为 {character.name} 生成 Q 版形象和表情包</p>
             </div>
           </div>
+          <button onClick={onClose} className="p-2 hover:bg-[var(--bg-hover)] rounded-full transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-[var(--border-primary)] bg-[var(--bg-surface)]">
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-[var(--error-hover-bg)] rounded text-[var(--text-tertiary)] hover:text-[var(--error-text)] transition-colors"
+            onClick={() => setActiveTab('three-view')}
+            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-b-2 ${
+              activeTab === 'three-view'
+                ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-bg)]/10'
+                : 'border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            }`}
           >
-            <X className="w-4 h-4" />
+            Step 1: Q版三视图
+          </button>
+          <button
+            onClick={() => setActiveTab('emotion-grid')}
+            disabled={!isThreeViewCompleted}
+            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-b-2 ${
+              activeTab === 'emotion-grid'
+                ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-bg)]/10'
+                : !isThreeViewCompleted
+                ? 'border-transparent text-[var(--text-muted)] cursor-not-allowed opacity-50'
+                : 'border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            }`}
+          >
+            Step 2: 情绪九宫格
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
-            
-            {/* Left Column: Three View Generation */}
-            <div className="flex flex-col h-full border border-[var(--border-primary)] rounded-lg bg-[var(--bg-surface)] overflow-hidden">
-              <div className="p-3 border-b border-[var(--border-primary)] bg-[var(--bg-hover)] flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-[var(--text-secondary)]" />
-                <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-                  第一步：Q版三视图
-                </h4>
+        <div className="flex-1 overflow-y-auto p-6 bg-[var(--bg-base)]">
+          {activeTab === 'three-view' ? (
+            <div className="space-y-6">
+              <div className="flex gap-6 flex-col md:flex-row">
+                {/* Left: Prompt Editor */}
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
+                      生成提示词
+                    </label>
+                    <textarea
+                      value={threeViewPrompt}
+                      onChange={(e) => setThreeViewPrompt(e.target.value)}
+                      className="w-full h-40 bg-[var(--bg-surface)] border border-[var(--border-secondary)] rounded-lg p-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none"
+                      placeholder="输入提示词..."
+                    />
+                    <p className="text-xs text-[var(--text-muted)] mt-2">
+                      提示：系统已预置标准 Q 版生成提示词，您可以根据需要微调。
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => onGenerateThreeView(character.id, threeViewPrompt)}
+                    disabled={isThreeViewGenerating}
+                    className="w-full py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-lg font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[var(--accent)]/20"
+                  >
+                    {isThreeViewGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-4 h-4" />
+                        {isThreeViewCompleted ? '重新生成' : '开始生成'}
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Right: Preview */}
+                <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-primary)] rounded-lg flex items-center justify-center overflow-hidden aspect-video relative group">
+                  {qVersion?.threeView?.imageUrl ? (
+                    <>
+                      <img
+                        src={qVersion.threeView.imageUrl}
+                        alt="Q-Version Three View"
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => onImageClick(qVersion.threeView!.imageUrl!)}
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                        <p className="text-white text-sm font-bold flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4" /> 点击预览大图
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center text-[var(--text-muted)]">
+                      <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">暂无生成结果</p>
+                    </div>
+                  )}
+                </div>
               </div>
               
-              <div className="flex-1 p-4 flex flex-col items-center justify-center relative min-h-[300px]">
-                {hasThreeView ? (
-                  <div className="w-full h-full flex flex-col">
-                    <img 
-                      src={threeView.imageUrl} 
-                      alt="Q-Version Three View" 
-                      className="w-full h-auto rounded-lg border border-[var(--border-primary)] cursor-pointer hover:opacity-90 transition-opacity mb-4"
-                      onClick={() => onImageClick(threeView.imageUrl!)}
+              {isThreeViewCompleted && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setActiveTab('emotion-grid')}
+                    className="px-6 py-2 bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-lg text-sm font-bold flex items-center gap-2 transition-all"
+                  >
+                    下一步：生成情绪九宫格 <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex gap-6 flex-col md:flex-row">
+                {/* Left: Prompt Editor */}
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
+                      生成提示词
+                    </label>
+                    <textarea
+                      value={emotionGridPrompt}
+                      onChange={(e) => setEmotionGridPrompt(e.target.value)}
+                      className="w-full h-64 bg-[var(--bg-surface)] border border-[var(--border-secondary)] rounded-lg p-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none"
+                      placeholder="输入提示词..."
                     />
-                    <button
-                      onClick={() => onGenerateThreeView(character.id)}
-                      disabled={isThreeViewGenerating || isEmotionsGenerating}
-                      className="w-full py-2 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-primary)] rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <ImagePlus className="w-3 h-3" />
-                      重新生成三视图
-                    </button>
-                  </div>
-                ) : isThreeViewGenerating ? (
-                  <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 text-[var(--accent)] animate-spin" />
-                    <p className="text-xs text-[var(--text-tertiary)]">正在生成三视图...</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="w-16 h-16 rounded-full bg-[var(--bg-hover)] flex items-center justify-center mb-2">
-                      <LayoutGrid className="w-8 h-8 text-[var(--text-muted)]" />
-                    </div>
-                    {threeViewFailed && (
-                      <p className="text-xs text-[var(--error)] font-bold flex items-center gap-1 mb-2">
-                        <AlertCircle className="w-3 h-3" /> 生成失败，请重试
-                      </p>
-                    )}
-                    <p className="text-xs text-[var(--text-tertiary)] max-w-[200px] mb-4">
-                      基于角色参考图生成Q版三视图（正面、侧面、背面），作为表情包生成的基础。
+                    <p className="text-xs text-[var(--text-muted)] mt-2">
+                      基于已生成的 Q 版三视图，生成 9 种不同情绪的表情包。
                     </p>
-                    <button
-                      onClick={() => onGenerateThreeView(character.id)}
-                      className="px-6 py-2 bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] text-[var(--btn-primary-text)] rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-[var(--btn-primary-shadow)]"
-                    >
-                      <Wand2 className="w-3 h-3" />
-                      生成三视图
-                    </button>
                   </div>
-                )}
+                  <button
+                    onClick={() => onGenerateEmotionGrid(character.id, emotionGridPrompt)}
+                    disabled={isEmotionGridGenerating}
+                    className="w-full py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-lg font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[var(--accent)]/20"
+                  >
+                    {isEmotionGridGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Grid3x3 className="w-4 h-4" />
+                        {isEmotionGridCompleted ? '重新生成' : '生成表情包'}
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Right: Preview */}
+                <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-primary)] rounded-lg flex items-center justify-center overflow-hidden aspect-square relative group">
+                  {qVersion?.emotionGrid?.imageUrl ? (
+                    <>
+                      <img
+                        src={qVersion.emotionGrid.imageUrl}
+                        alt="Q-Version Emotion Grid"
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => onImageClick(qVersion.emotionGrid!.imageUrl!)}
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                        <p className="text-white text-sm font-bold flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4" /> 点击预览大图
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center text-[var(--text-muted)]">
+                      <Grid3x3 className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">暂无生成结果</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-
-            {/* Right Column: Emotion 9-Grid Generation */}
-            <div className={`flex flex-col h-full border border-[var(--border-primary)] rounded-lg bg-[var(--bg-surface)] overflow-hidden transition-opacity ${!hasThreeView ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="p-3 border-b border-[var(--border-primary)] bg-[var(--bg-hover)] flex items-center gap-2">
-                <Grid3x3 className="w-4 h-4 text-[var(--text-secondary)]" />
-                <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-                  第二步：Q版表情九宫格
-                </h4>
-              </div>
-
-              <div className="flex-1 p-4 flex flex-col items-center justify-center relative min-h-[300px]">
-                {!hasThreeView ? (
-                  <div className="flex flex-col items-center gap-4 text-center">
-                     <div className="w-16 h-16 rounded-full bg-[var(--bg-hover)] flex items-center justify-center mb-2">
-                      <Grid3x3 className="w-8 h-8 text-[var(--text-muted)]" />
-                    </div>
-                    <p className="text-xs text-[var(--text-muted)] max-w-[200px]">
-                      请先完成左侧的三视图生成
-                    </p>
-                  </div>
-                ) : hasEmotions ? (
-                  <div className="w-full h-full flex flex-col">
-                    <img 
-                      src={emotions.imageUrl} 
-                      alt="Q-Version Emotions" 
-                      className="w-full h-auto rounded-lg border border-[var(--border-primary)] cursor-pointer hover:opacity-90 transition-opacity mb-4"
-                      onClick={() => onImageClick(emotions.imageUrl!)}
-                    />
-                    <button
-                      onClick={() => onGenerateEmotions(character.id)}
-                      disabled={isEmotionsGenerating}
-                      className="w-full py-2 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-primary)] rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <ImagePlus className="w-3 h-3" />
-                      重新生成表情包
-                    </button>
-                  </div>
-                ) : isEmotionsGenerating ? (
-                  <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 text-[var(--accent)] animate-spin" />
-                    <p className="text-xs text-[var(--text-tertiary)]">正在生成表情九宫格...</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="w-16 h-16 rounded-full bg-[var(--bg-hover)] flex items-center justify-center mb-2">
-                      <Grid3x3 className="w-8 h-8 text-[var(--text-muted)]" />
-                    </div>
-                    {emotionsFailed && (
-                      <p className="text-xs text-[var(--error)] font-bold flex items-center gap-1 mb-2">
-                        <AlertCircle className="w-3 h-3" /> 生成失败，请重试
-                      </p>
-                    )}
-                    <p className="text-xs text-[var(--text-tertiary)] max-w-[200px] mb-4">
-                      基于生成的Q版三视图，生成一套9个不同情绪的表情包。
-                    </p>
-                    <button
-                      onClick={() => onGenerateEmotions(character.id)}
-                      className="px-6 py-2 bg-[var(--accent-bg)] hover:bg-[var(--accent-hover-bg)] text-[var(--accent-text)] border border-[var(--accent-border)] rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2"
-                    >
-                      <Wand2 className="w-3 h-3" />
-                      生成表情包
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-          </div>
+          )}
         </div>
       </div>
     </div>

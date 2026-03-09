@@ -44,7 +44,7 @@ export interface CharacterQVersionData {
     prompt?: string;
     status: 'pending' | 'generating' | 'completed' | 'failed';
   };
-  emotions?: {
+  emotionGrid?: {
     imageUrl?: string;
     prompt?: string;
     status: 'pending' | 'generating' | 'completed' | 'failed';
