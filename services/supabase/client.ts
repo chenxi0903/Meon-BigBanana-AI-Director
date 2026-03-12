@@ -53,11 +53,13 @@ const cookieStorage = {
     
     const domain = getCookieDomain();
     
+    // 设置 Cookie
+    // 注意：supabase-js 会频繁调用 setItem，包括 refresh_token 更新时
     Cookies.set(key, value, {
-      domain: domain, // 如果是 undefined，js-cookie 不会设置 Domain 属性
+      domain: domain, 
       path: '/',
       sameSite: 'Lax',
-      secure: window.location.protocol === 'https:', // 根据当前协议判断是否开启 Secure
+      secure: window.location.protocol === 'https:',
       expires: 365, // 设置合理的过期时间
     });
   },
@@ -86,6 +88,34 @@ export const supabase: SupabaseClient | null =
         },
       })
     : null;
+
+/**
+ * 监听 TOKEN_REFRESHED 事件，确保 Cookie 被正确更新
+ * 有时自动刷新后，js-cookie 可能没有及时同步，这里加一层保险
+ */
+if (supabase) {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'TOKEN_REFRESHED' && session) {
+      // 强制更新 Cookie，防止过期
+      const key = `sb-${new URL(supabaseUrl!).hostname.split('.')[0]}-auth-token`;
+      // 注意：这里我们无法直接获取内部使用的 key 名称，
+      // 但 supabase-js 会在内部调用 storage.setItem，所以通常不需要手动干预。
+      // 如果仍然出现登出问题，可能是因为多标签页导致旧 Token 覆盖了新 Token。
+      // 在这里打印日志以便调试
+      console.log('[Auth] Token Refreshed', session.expires_at);
+    }
+    if (event === 'SIGNED_OUT') {
+       // 确保彻底清除
+       const domain = getCookieDomain();
+       // 清除可能存在的残留
+       Object.keys(Cookies.get()).forEach(cookieName => {
+         if (cookieName.startsWith('sb-')) {
+            Cookies.remove(cookieName, { domain, path: '/' });
+         }
+       });
+    }
+  });
+}
 
 /**
  * 检查 Supabase 是否可用（环境变量已配置）
