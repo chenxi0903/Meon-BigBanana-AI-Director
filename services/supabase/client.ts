@@ -5,7 +5,7 @@
  * 修改说明 (2025-03-12):
  * 1. 引入 js-cookie 实现自定义 Storage Adapter
  * 2. 将 Session 存储位置从 localStorage 迁移到 Cookie
- * 3. 设置 Cookie Domain 为顶级域名 (.xxx.art) 以支持跨域 SSO
+ * 3. 设置 Cookie Domain 为顶级域名 (.meonai.art) 以支持跨域 SSO
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -22,18 +22,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 /**
  * 动态获取 Cookie 作用域
- * 本地开发时使用 localhost，生产环境使用顶级域名 .xxx.art
+ * 本地开发时返回 undefined (host-only cookie)，生产环境使用顶级域名 .meonai.art
  */
 const getCookieDomain = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    // 本地开发时不设置 domain（或设置为 localhost）
+    // 本地开发时不设置 domain
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return hostname;
+      return undefined;
     }
     // 线上环境设置为顶级域名，注意前面的点
-    // TODO: 如果部署域名不是 xxx.art，请在此处修改或通过环境变量注入
-    return '.xxx.art'; 
+    return '.meonai.art'; 
   }
   return undefined;
 };
@@ -52,17 +51,20 @@ const cookieStorage = {
       localStorage.removeItem(key);
     }
     
+    const domain = getCookieDomain();
+    
     Cookies.set(key, value, {
-      domain: getCookieDomain(),
+      domain: domain, // 如果是 undefined，js-cookie 不会设置 Domain 属性
       path: '/',
       sameSite: 'Lax',
-      secure: import.meta.env.PROD, // 生产环境下开启 Secure
+      secure: window.location.protocol === 'https:', // 根据当前协议判断是否开启 Secure
       expires: 365, // 设置合理的过期时间
     });
   },
   removeItem: (key: string) => {
+    const domain = getCookieDomain();
     Cookies.remove(key, {
-      domain: getCookieDomain(),
+      domain: domain,
       path: '/',
     });
   },
