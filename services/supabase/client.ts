@@ -1,9 +1,15 @@
 /**
  * Supabase 客户端初始化
  * 使用 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY 环境变量
+ * 
+ * 修改说明 (2025-03-12):
+ * 1. 引入 js-cookie 实现自定义 Storage Adapter
+ * 2. 将 Session 存储位置从 localStorage 迁移到 Cookie
+ * 3. 设置 Cookie Domain 为顶级域名 (.xxx.art) 以支持跨域 SSO
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import Cookies from 'js-cookie';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -13,6 +19,54 @@ if (!supabaseUrl || !supabaseAnonKey) {
     '[Supabase] 缺少环境变量 VITE_SUPABASE_URL 或 VITE_SUPABASE_ANON_KEY，云端同步功能不可用。'
   );
 }
+
+/**
+ * 动态获取 Cookie 作用域
+ * 本地开发时使用 localhost，生产环境使用顶级域名 .xxx.art
+ */
+const getCookieDomain = () => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // 本地开发时不设置 domain（或设置为 localhost）
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return hostname;
+    }
+    // 线上环境设置为顶级域名，注意前面的点
+    // TODO: 如果部署域名不是 xxx.art，请在此处修改或通过环境变量注入
+    return '.xxx.art'; 
+  }
+  return undefined;
+};
+
+/**
+ * 自定义 Cookie Storage 适配器
+ * 用于替代默认的 localStorage，支持跨子域共享 Session
+ */
+const cookieStorage = {
+  getItem: (key: string) => {
+    return Cookies.get(key) ?? null;
+  },
+  setItem: (key: string, value: string) => {
+    // 移除之前的 localStorage 数据（可选，避免混淆）
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(key);
+    }
+    
+    Cookies.set(key, value, {
+      domain: getCookieDomain(),
+      path: '/',
+      sameSite: 'Lax',
+      secure: import.meta.env.PROD, // 生产环境下开启 Secure
+      expires: 365, // 设置合理的过期时间
+    });
+  },
+  removeItem: (key: string) => {
+    Cookies.remove(key, {
+      domain: getCookieDomain(),
+      path: '/',
+    });
+  },
+};
 
 /**
  * Supabase 单例客户端
@@ -25,6 +79,8 @@ export const supabase: SupabaseClient | null =
           autoRefreshToken: true,
           persistSession: true,
           detectSessionInUrl: true,
+          storage: cookieStorage, // 使用自定义 Cookie Storage
+          flowType: 'pkce',      // 使用 PKCE 流程增强安全性
         },
       })
     : null;

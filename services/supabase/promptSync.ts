@@ -100,7 +100,7 @@ const collectPrompts = (): PromptTemplate[] => {
     'buildShotListGenerationPrompt', // Legacy
     'buildScriptContinuationPrompt',
     'buildScriptRewritePrompt',
-    'buildArtDirectionPrompt',
+    'buildArtDirectionPrompt', 
     'buildBatchCharacterPrompt',
     'buildCharacterPrompt',
     'buildScenePrompt',

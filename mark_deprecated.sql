@@ -1,4 +1,4 @@
--- ============================================
+  -- ============================================
 -- Meon - Mark Deprecated Prompt Versions
 -- 将已弃用的旧版提示词 (buildShotListGenerationPrompt) 版本号标记为 "0.0.0-deprecated"
 -- 请在 Supabase Dashboard > SQL Editor 中执行此文件

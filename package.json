@@ -11,8 +11,10 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.97.0",
+    "@types/js-cookie": "^3.0.6",
     "@volcengine/openapi": "^1.36.0",
     "claude": "^0.1.1",
+    "js-cookie": "^3.0.5",
     "jszip": "^3.10.1",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",
