@@ -19,6 +19,11 @@ import { useAuth } from './contexts/AuthContext';
 import logoImg from './meon_logo.svg';
 // Import prompt sync utility to make it available globally
 import './services/supabase/promptSync';
+import { 
+  shouldShowInitialPopup, 
+  markInitialPopupShown, 
+  requestNotificationPermission 
+} from './services/notificationService';
 
 function App() {
   const { user, loading: authLoading, isConfigured: isSupabaseConfigured } = useAuth();
@@ -47,6 +52,35 @@ function App() {
     window.addEventListener('resize', checkMobile);
     
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Check for notification permission on load
+  useEffect(() => {
+    if (shouldShowInitialPopup()) {
+      // Small delay to ensure UI is ready
+      setTimeout(() => {
+        showAlert('当视频或图片生成完成时，可以通过浏览器通知提醒您。\n是否启用此功能？', {
+          title: '启用生成完成通知',
+          type: 'info',
+          showCancel: true,
+          confirmText: '启用通知',
+          cancelText: '稍后设置',
+          onConfirm: async () => {
+            markInitialPopupShown();
+            const granted = await requestNotificationPermission();
+            if (granted) {
+              showAlert('通知功能已启用！', { type: 'success' });
+            } else {
+              // User denied or dismissed the browser prompt
+              // No need to show another alert, just let it be.
+            }
+          },
+          onCancel: () => {
+            markInitialPopupShown();
+          }
+        });
+      }, 1000);
+    }
   }, []);
 
   // Load API Key from localStorage on mount

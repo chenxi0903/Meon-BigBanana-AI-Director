@@ -20,6 +20,7 @@ import {
   buildPromptFromNineGridPanel,
   cropPanelFromNineGrid
 } from './utils';
+import { sendNotification } from '../../services/notificationService';
 import { DEFAULTS } from './constants';
 import EditModal from './EditModal';
 import ShotCard from './ShotCard';
@@ -227,6 +228,11 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
           return updateKeyframeInShot(s, type, createKeyframe(kfId, type, prompt, url, 'completed'));
         })
       }));
+
+      sendNotification(`关键帧生成完成`, {
+        body: `镜头 ${project.shots.findIndex(s => s.id === shot.id) + 1} 的${type === 'start' ? '起始帧' : '结束帧'}已生成`,
+        image: url
+      });
     } catch (e: any) {
       console.error(e);
       updateProject((prevProject: ProjectState) => ({
@@ -237,6 +243,10 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
         })
       }));
       
+      sendNotification(`关键帧生成失败`, {
+        body: `镜头 ${project.shots.findIndex(s => s.id === shot.id) + 1}: ${e.message}`
+      });
+
       if (onApiKeyError && onApiKeyError(e)) return;
       showAlert(`生成失败: ${e.message}`, { type: 'error' });
     }
@@ -364,6 +374,11 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
           status: 'completed'
         }
       }));
+
+      sendNotification(`视频生成完成`, {
+        body: `镜头 ${project.shots.findIndex(s => s.id === shot.id) + 1} 的视频已生成`,
+        image: sKf?.imageUrl
+      });
     } catch (e: any) {
       console.error(e);
       updateShot(shot.id, (s) => ({
@@ -371,6 +386,10 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
         interval: s.interval ? { ...s.interval, status: 'failed' } : undefined
       }));
       
+      sendNotification(`视频生成失败`, {
+        body: `镜头 ${project.shots.findIndex(s => s.id === shot.id) + 1}: ${e.message}`
+      });
+
       if (onApiKeyError && onApiKeyError(e)) return;
       showAlert(`视频生成失败: ${e.message}`, { type: 'error' });
     }
@@ -482,6 +501,9 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
     }
 
     setBatchProgress(null);
+    sendNotification(`批量生成完成`, {
+      body: `批量任务已结束`
+    });
   };
 
   /**
@@ -891,6 +913,11 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
           status: 'completed' as const
         }
       }));
+
+      sendNotification(`九宫格生成完成`, {
+        body: `镜头 ${project.shots.indexOf(activeShot) + 1} 的九宫格预览图已生成`,
+        image: imageUrl
+      });
       
       showAlert('九宫格分镜图片生成完成！', { type: 'success' });
       
@@ -903,6 +930,10 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
           status: 'failed' as const
         }
       }));
+
+      sendNotification(`九宫格生成失败`, {
+        body: e.message
+      });
       
       if (onApiKeyError && onApiKeyError(e)) return;
       showAlert(`九宫格图片生成失败: ${e.message}`, { type: 'error' });

@@ -5,6 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { getJimengGlobalConfig, setJimengGlobalConfig } from '../../services/modelRegistry';
+import { 
+  isNotificationEnabled, 
+  setNotificationEnabled, 
+  requestNotificationPermission 
+} from '../../services/notificationService';
+import { Bell, BellOff } from 'lucide-react';
 
 interface GlobalSettingsProps {
   onRefresh: () => void;
@@ -13,11 +19,18 @@ interface GlobalSettingsProps {
 const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
   const [jimengBaseUrl, setJimengBaseUrl] = useState('');
   const [jimengSessionToken, setJimengSessionToken] = useState('');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
 
   useEffect(() => {
     const config = getJimengGlobalConfig();
     setJimengBaseUrl(config.baseUrl || '');
     setJimengSessionToken(config.sessionToken || '');
+    
+    setNotificationsEnabled(isNotificationEnabled());
+    if ('Notification' in window) {
+      setPermissionStatus(Notification.permission);
+    }
   }, []);
 
   const handleSave = () => {
@@ -28,8 +41,70 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
     onRefresh();
   };
 
+  const toggleNotifications = async () => {
+    if (!notificationsEnabled) {
+      // Trying to enable
+      if (permissionStatus === 'default') {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          setNotificationsEnabled(true);
+          setPermissionStatus('granted');
+          setNotificationEnabled(true);
+        }
+      } else if (permissionStatus === 'granted') {
+        setNotificationsEnabled(true);
+        setNotificationEnabled(true);
+      } else {
+        // denied
+        alert('浏览器通知权限已被拒绝。请在浏览器设置中允许通知权限。');
+      }
+    } else {
+      // Trying to disable
+      setNotificationsEnabled(false);
+      setNotificationEnabled(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* 通知设置 */}
+      <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-lg border border-[var(--border-primary)]">
+        <h4 className="text-xs font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+          <Bell className="w-3 h-3" />
+          系统通知
+        </h4>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] text-[var(--text-primary)] font-medium">
+              任务完成通知
+            </p>
+            <p className="text-[9px] text-[var(--text-muted)]">
+              当视频或图片生成完成时，通过浏览器发送系统通知
+            </p>
+          </div>
+          <button
+            onClick={toggleNotifications}
+            className={`
+              relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2
+              ${notificationsEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--bg-base)] border border-[var(--border-secondary)]'}
+            `}
+          >
+            <span
+              className={`
+                inline-block h-3 w-3 transform rounded-full bg-white transition-transform
+                ${notificationsEnabled ? 'translate-x-5' : 'translate-x-1'}
+              `}
+            />
+          </button>
+        </div>
+        {permissionStatus === 'denied' && (
+          <p className="text-[9px] text-[var(--error)] mt-2 flex items-center gap-1">
+            <BellOff className="w-3 h-3" />
+            通知权限已被拒绝，请在浏览器设置中手动开启
+          </p>
+        )}
+      </div>
+
       {/* 即梦反代全局配置 */}
       <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-lg border border-[var(--border-primary)]">
         <h4 className="text-xs font-bold text-[var(--text-primary)] mb-3">即梦反代全局配置</h4>
