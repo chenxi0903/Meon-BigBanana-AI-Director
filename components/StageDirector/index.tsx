@@ -633,10 +633,19 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
         );
       });
       
+      sendNotification(`提示词优化完成`, {
+        body: `镜头 ${project.shots.indexOf(activeShot) + 1} 的${type === 'start' ? '起始帧' : '结束帧'}提示词已优化`
+      });
+
       showAlert(`${type === 'start' ? '起始帧' : '结束帧'}提示词已优化`, { type: 'success' });
     } catch (e: any) {
       console.error('AI优化失败:', e);
       if (onApiKeyError && onApiKeyError(e)) return;
+      
+      sendNotification(`提示词优化失败`, {
+        body: `镜头 ${project.shots.indexOf(activeShot) + 1}: ${e.message}`
+      });
+
       showAlert(`AI优化失败: ${e.message}`, { type: 'error' });
     } finally {
       setIsAIGenerating(false);
@@ -705,10 +714,19 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
         return updated;
       });
       
+      sendNotification(`提示词优化完成`, {
+        body: `镜头 ${project.shots.indexOf(activeShot) + 1} 的首尾帧提示词已同时优化`
+      });
+
       showAlert('起始帧和结束帧提示词已优化', { type: 'success' });
     } catch (e: any) {
       console.error('AI优化失败:', e);
       if (onApiKeyError && onApiKeyError(e)) return;
+      
+      sendNotification(`提示词优化失败`, {
+        body: `镜头 ${project.shots.indexOf(activeShot) + 1}: ${e.message}`
+      });
+      
       showAlert(`AI优化失败: ${e.message}`, { type: 'error' });
     } finally {
       setIsAIGenerating(false);
@@ -789,10 +807,20 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError,
       
       // 6. 关闭工作台，显示成功提示
       setActiveShotId(null);
+      
+      sendNotification(`镜头拆分完成`, {
+        body: `镜头 ${project.shots.indexOf(shot) + 1} 已成功拆分为 ${subShots.length} 个子镜头`
+      });
+      
       showAlert(`镜头已拆分为 ${subShots.length} 个子镜头`, { type: 'success' });
     } catch (e: any) {
       console.error('镜头拆分失败:', e);
       if (onApiKeyError && onApiKeyError(e)) return;
+      
+      sendNotification(`镜头拆分失败`, {
+        body: `镜头 ${project.shots.indexOf(shot) + 1} 拆分失败: ${e.message}`
+      });
+      
       showAlert(`拆分失败: ${e.message}`, { type: 'error' });
     } finally {
       setIsSplittingShot(false);

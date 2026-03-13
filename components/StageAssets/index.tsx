@@ -16,6 +16,7 @@ import {
   generateId,
   compareIds 
 } from './utils';
+import { sendNotification } from '../../services/notificationService';
 import { DEFAULTS, STYLES, GRID_LAYOUTS } from './constants';
 import ImagePreviewModal from './ImagePreviewModal';
 import CharacterCard from './CharacterCard';
@@ -374,20 +375,29 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
       // 更新状态
       if (project.scriptData) {
         const newData = { ...project.scriptData };
+        let itemName = '未知';
         if (type === 'character') {
           const c = newData.characters.find(c => compareIds(c.id, id));
           if (c) {
             c.referenceImage = imageUrl;
             c.status = 'completed';
+            itemName = c.name;
           }
         } else {
           const s = newData.scenes.find(s => compareIds(s.id, id));
           if (s) {
             s.referenceImage = imageUrl;
             s.status = 'completed';
+            itemName = s.location;
           }
         }
         updateProject({ scriptData: newData });
+
+        // 发送通知
+        sendNotification(`${type === 'character' ? '角色' : '场景'}生成完成`, {
+          body: `${type === 'character' ? '角色' : '场景'}「${itemName}」参考图已生成`,
+          image: imageUrl
+        });
       }
 
     } catch (e: any) {
@@ -396,17 +406,30 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
         return;
       }
       // 设置失败状态
+      let itemName = '未知';
       if (project.scriptData) {
         const newData = { ...project.scriptData };
         if (type === 'character') {
           const c = newData.characters.find(c => compareIds(c.id, id));
-          if (c) c.status = 'failed';
+          if (c) {
+            c.status = 'failed';
+            itemName = c.name;
+          }
         } else {
           const s = newData.scenes.find(s => compareIds(s.id, id));
-          if (s) s.status = 'failed';
+          if (s) {
+            s.status = 'failed';
+            itemName = s.location;
+          }
         }
         updateProject({ scriptData: newData });
       }
+
+      // 发送失败通知
+      sendNotification(`${type === 'character' ? '角色' : '场景'}生成失败`, {
+        body: `${type === 'character' ? '角色' : '场景'}「${itemName}」: ${e.message}`
+      });
+
       if (onApiKeyError && onApiKeyError(e)) {
         return;
       }
@@ -474,6 +497,9 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
     }
 
     setBatchProgress(null);
+    sendNotification(`批量${type === 'character' ? '角色' : '场景'}生成完成`, {
+      body: `批量任务已结束`
+    });
   };
 
   /**
@@ -654,6 +680,11 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
         target.negativePrompt = prompts.negativePrompt;
       }
       updateProject({ scriptData: newData });
+      
+      sendNotification(`角色提示词已更新`, {
+        body: `角色「${char.name}」的提示词已重新生成`
+      });
+
       showAlert(`角色「${char.name}」提示词已重新生成`, { type: 'success' });
     } catch (e: any) {
       console.error(e);
@@ -712,6 +743,11 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError, o
         target.negativePrompt = prompts.negativePrompt;
       }
       updateProject({ scriptData: newData });
+
+      sendNotification(`场景提示词已更新`, {
+        body: `场景「${scene.location}」的提示词已重新生成`
+      });
+
       showAlert(`场景「${scene.location}」提示词已重新生成`, { type: 'success' });
     } catch (e: any) {
       console.error(e);
